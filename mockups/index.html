@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-scheme="1" data-guides="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Audiobookr — Direction</title>
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<header class="pg-head"></header>
+
+<div class="pg-intro">
+  <h1>One book, three formats, one position</h1>
+  <p>
+    V0 is the audiobook player and nothing else. The four tabs —
+    <strong>Library · Audiobook · Reader · Scan</strong> — are all present from day one because the
+    shell is the thing being confirmed; the two that are not built say so instead of showing dead
+    controls.
+  </p>
+  <p>
+    Two screens carry four variants each. Everything on every phone is live: filters filter, rows
+    open the player, the player plays. Two colour schemes and an alignment-guide overlay sit in the
+    bar at the bottom of every page and follow you between them.
+  </p>
+</div>
+
+<div class="pg-sect">
+  <h2 class="pg-h">Screens</h2>
+  <nav class="linklist">
+    <a href="library.html"><b>Library</b><span>Four variants · where the filter lives, what the progress belongs to</span></a>
+    <a href="audiobook.html"><b>Audiobook</b><span>Four variants · cover-top, Audible lineup, full-bleed, card over list</span></a>
+    <a href="reader.html"><b>Reader</b><span>Under construction</span></a>
+    <a href="scan.html"><b>Scan</b><span>Under construction</span></a>
+  </nav>
+</div>
+
+<div class="pg-sect">
+  <h2 class="pg-h">Plan</h2>
+  <ol class="plan">
+    <li><span class="n">01</span><div>
+      <h3>Player V0</h3>
+      <p>M4B chapters, background audio, lock-screen controls, speed, sleep timer.</p>
+      <p class="k">AVFoundation · MPNowPlayingInfoCenter · SwiftData</p>
+    </div></li>
+    <li><span class="n">02</span><div>
+      <h3>Notes</h3>
+      <p>One tap captures a timestamped note; audio pauses and resumes on save.</p>
+      <p class="k">SwiftData · App Intents</p>
+    </div></li>
+    <li><span class="n">03</span><div>
+      <h3>Scan-sync</h3>
+      <p>Camera reads a paper page, matches the paired EPUB, moves both positions.</p>
+      <p class="k">Vision OCR · ZIPFoundation · SwiftSoup · own fuzzy match</p>
+    </div></li>
+    <li><span class="n">04</span><div>
+      <h3>TestFlight</h3>
+      <p>Daily use on one device, then a small invite build.</p>
+      <p class="k">Xcode Cloud · TestFlight</p>
+    </div></li>
+  </ol>
+  <p style="margin-top:24px"><button class="quiet-act" type="button" id="confirm" aria-pressed="false"><span>Confirm this plan</span></button></p>
+</div>
+
+<div class="pg-sect">
+  <h2 class="pg-h">Later</h2>
+  <ul class="later">
+    <li>Voice notes with on-device transcription</li>
+    <li>Action-button and lock-screen capture</li>
+    <li>Read-along with a paired EPUB</li>
+    <li>Word-level forced alignment</li>
+    <li>Scan saves a highlight, not just a jump</li>
+    <li>Markdown export to Obsidian</li>
+    <li>Ebook to speech, on device</li>
+    <li>Smart rewind and silence trimming</li>
+    <li>Per-book speed and bookmarks</li>
+    <li>CloudKit sync across devices</li>
+    <li>Watch app</li>
+    <li>Cover and metadata lookup</li>
+  </ul>
+</div>
+
+<p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
+
+<script src="app.js"></script>
+<script>
+AB.chrome('index.html', 'Direction');
+(function () {
+  var btn = document.getElementById('confirm');
+  btn.addEventListener('click', function () {
+    if (btn.getAttribute('aria-pressed') === 'true') return;
+    btn.setAttribute('aria-pressed', 'true');
+    btn.innerHTML = AB.IC.check + '<span>Plan confirmed</span>';
+  });
+})();
+</script>
+</body>
+</html>

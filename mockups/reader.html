@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" data-scheme="1" data-guides="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Audiobookr — Reader</title>
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<header class="pg-head"></header>
+
+<div class="pg-intro">
+  <h1>Reader</h1>
+  <p>
+    Not built in V0, so it is one line and a tab bar that still works. The rule the whole set
+    follows: a feature that does not exist has no controls — it has a sentence. Tap any other tab and
+    you land in something real.
+  </p>
+</div>
+
+<div class="pg-sect">
+  <div class="pg-row">
+    <div class="pg-var">
+      <div class="pg-var__head"><span class="pg-var__name">Reader tab</span></div>
+      <div class="phone"><div class="ios" id="ph-reader"></div></div>
+      <p class="pg-var__why">The Reader tab will open the last-read book at the position it shares
+        with its audiobook. Until the EPUB pipeline exists there is nothing honest to draw.</p>
+    </div>
+  </div>
+</div>
+
+<p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
+
+<script src="app.js"></script>
+<script>
+AB.chrome('reader.html', 'Reader — under construction');
+AB.mountOne('ph-reader', { tab: 'reader' });
+</script>
+</body>
+</html>
