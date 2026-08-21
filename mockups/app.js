@@ -358,6 +358,7 @@
       if (refocus) { input.focus(); input.setSelectionRange(st.q.length, st.q.length); }
     }
     this.bindScrubber();
+    this.bindWheel();
   };
 
   /* ---- the guides overlay: rails only, repainted with every state ------- */
@@ -373,6 +374,33 @@
         : '<i class="v" style="left:calc(var(--ins) + ' + x + 'px)"></i>';
     });
     return h + '<i class="h" style="bottom:calc(var(--tab-h) + var(--home-h))"></i></div>';
+  };
+
+  /* ---- chapter wheel: settle on a row and playback follows ---------------- */
+  Phone.prototype.bindWheel = function () {
+    var wl = this.host.querySelector('.wheel');
+    if (!wl) return;
+    var self = this, t = null;
+    function highlight(i) {
+      Array.prototype.forEach.call(wl.querySelectorAll('button'), function (btn, j) {
+        btn.setAttribute('aria-current', j === i ? 'true' : 'false');
+      });
+    }
+    function settle() {
+      var b = self.book();
+      var i = Math.max(0, Math.min(b.chapters - 1, Math.round(wl.scrollTop / 36)));
+      if (i !== chapIndex(b)) { self.seek(i * chapLen(b)); return; }
+      highlight(i);
+      try { wl.scrollTo({ top: i * 36 }); } catch (e) { wl.scrollTop = i * 36; }
+    }
+    wl.addEventListener('scroll', function () {
+      if (t) clearTimeout(t);
+      t = setTimeout(settle, 90);
+    }, { passive: true });
+    /* land exactly on the snap point of the playing chapter so CSS snap,
+       the restored scroll offset and the engine state can never disagree */
+    var b0 = this.book();
+    try { wl.scrollTo({ top: chapIndex(b0) * 36 }); } catch (e) { wl.scrollTop = chapIndex(b0) * 36; }
   };
 
   /* ---- scrubber: tap and drag ------------------------------------------- */
@@ -496,6 +524,17 @@
     return '<div class="inline"><div class="chaps" data-keep="chaps"' +
       (max ? ' style="max-height:' + max + '"' : '') + '>' + chapterListRows(b) + '</div></div>';
   }
+
+  /* the chapter wheel: the iOS time-picker drum. The cover's place is taken by a
+     wheel whose rows shrink and fade toward the edges; settling on a row seeks it. */
+  function wheelBox(b) {
+    var cur = chapIndex(b), h = '<div class="wheelbox"><div class="wheel" data-keep="wheel" role="listbox" aria-label="Chapters">';
+    for (var i = 0; i < b.chapters; i++) {
+      h += '<button type="button" role="option" data-act="chapter" data-arg="' + i +
+        '" aria-current="' + (i === cur ? 'true' : 'false') + '">' + esc(chapName(b, i)) + '</button>';
+    }
+    return h + '</div><i class="wheel-sel" aria-hidden="true"></i></div>';
+  }
   function chapterListRows(b) {
     var cur = chapIndex(b), len = chapLen(b), h = '';
     for (var i = 0; i < b.chapters; i++) {
@@ -530,13 +569,16 @@
       '<div class="pl-top"><button type="button" data-act="back" aria-label="Back to library">' + IC.down + '</button>' +
       '<span class="pl-top__c">' + esc(formatWord(b)) + '</span><span style="width:36px"></span></div>' +
       '<i class="gap gap--sm"></i>' +
-      '<span class="cover pl-cover c' + b.tone + '" aria-hidden="true">' + coverHTML(b, 600) + '</span>' +
+      (st.chaps
+        ? '<div class="inline inline--flex">' + wheelBox(b) + '</div>'
+        : '<span class="cover pl-cover c' + b.tone + '" aria-hidden="true">' +
+          coverHTML(b, 600) + '<span class="scrim"></span></span>') +
       '<i class="gap"></i>' +
       '<div class="pl-id"><div class="pl-t">' + esc(b.title) + '</div>' +
       '<div class="pl-a">' + esc(b.author + (b.narrator ? ' · ' + b.narrator : '')) + '</div></div>' +
       chapterRow(b) +
       '<i class="gap gap--sm"></i>' +
-      scrubber(b) + transport(st) + utilRow(b, st) + sleepPicker(st) + chapterList(b, st, '150px') +
+      scrubber(b) + transport(st) + utilRow(b, st) + sleepPicker(st) +
       '</div>';
   }
 
@@ -627,6 +669,7 @@
     esc: esc, hms: hms, span: span, coverHTML: coverHTML, pct: pct, frac: frac, state: state,
     hasAudio: hasAudio, isPaired: isPaired, formatWord: formatWord, metaLine: metaLine,
     chapLen: chapLen, chapIndex: chapIndex, chapName: chapName, chapterListRows: chapterListRows,
+    wheelBox: wheelBox,
     searchField: searchField, bookRow: bookRow, resumeRow: resumeRow,
     scrubber: scrubber, transport: transport, chapterRow: chapterRow, utilRow: utilRow,
     sleepPicker: sleepPicker, chapterList: chapterList, underConstruction: underConstruction,

@@ -213,7 +213,7 @@ ul,ol{padding:0;list-style:none;}
 
 .sect{
   font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--ink-3);margin-top:20px;flex:none;
+  color:var(--ink-3);margin-top:26px;margin-bottom:4px;flex:none;
 }
 
 /* quiet filter words — no pill, no box: weight and colour carry the state */
@@ -293,7 +293,7 @@ ul,ol{padding:0;list-style:none;}
 /* ---- list rows: four progress attributions, one grid ---- */
 .book{
   display:grid;grid-template-columns:var(--cov-row) minmax(0,1fr);
-  column-gap:14px;row-gap:8px;width:100%;padding:11px 0 10px;
+  column-gap:14px;row-gap:10px;width:100%;padding:14px 0 13px;
   transition:opacity 160ms ease;
 }
 .book .cover{width:var(--cov-row);height:var(--cov-row);grid-row:1;}
@@ -302,11 +302,11 @@ ul,ol{padding:0;list-style:none;}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .book-a{display:block;font-size:12px;color:var(--ink-2);line-height:16px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.book-f{display:block;font-size:11.5px;color:var(--ink-3);line-height:16px;
+.book-f{display:block;font-size:11.5px;color:var(--ink-3);line-height:16px;margin-top:4px;
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* A — under the cover only, so the line can belong to nothing else */
 .book--a{grid-template-rows:auto auto;}
-.book--a .book-p{grid-column:1;grid-row:2;}
+.book--a .book-p{grid-column:1;grid-row:2;margin-top:4px;}
 .book--a .book-x{grid-row:1/3;align-self:center;}
 /* C — a short line inside the text column, between the title block and the meta */
 .book--c .book-p{margin:6px 0 5px;}
@@ -326,6 +326,25 @@ ul,ol{padding:0;list-style:none;}
 /* the big cover spans inset to inset, so its edges are the rails */
 .pl-cover{width:100%;border-radius:12px;}
 .pl-cover--bleed{border-radius:0;border-inline:0;}
+/* A: the artwork is dimmed with a scrim so light covers never glare at night;
+   the identity text stays outside the image */
+.pl-cover .scrim{position:absolute;inset:0;border-radius:inherit;background:
+  linear-gradient(180deg, rgba(5,5,5,.20) 0%, rgba(5,5,5,.02) 34%, rgba(5,5,5,.42) 100%);}
+
+/* ---- chapter wheel: the iOS time-picker drum ---- */
+.wheelbox{flex:none;position:relative;height:216px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line-2);background:var(--raise-1);}
+.wheel{height:100%;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30%,#000 70%,transparent 100%);
+          mask-image:linear-gradient(180deg,transparent 0,#000 30%,#000 70%,transparent 100%);}
+.wheel::before,.wheel::after{content:"";display:block;height:90px;}
+.wheel button{display:flex;align-items:center;justify-content:center;width:100%;height:36px;
+  scroll-snap-align:center;font-size:16px;color:var(--ink-3);
+  transition:color 120ms ease,transform 120ms ease;}
+.wheel button:hover{color:var(--ink-2);}
+.wheel button[aria-current="true"]{color:var(--ink);font-weight:600;}
+.wheel-sel{position:absolute;left:10px;right:10px;top:50%;height:36px;transform:translateY(-50%);
+  border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);pointer-events:none;}
 
 .pl-id{flex:none;}
 .pl-t{font-size:21px;font-weight:700;letter-spacing:-.03em;line-height:1.15;

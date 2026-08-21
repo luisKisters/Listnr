@@ -16,7 +16,8 @@
     Locked: <strong>title and author are always on screen</strong>, there is no
     Listen / Read&nbsp;&amp;&nbsp;Listen segment at the top, and every control does something.
     Speed cycles 1.0→2.0×. Sleep opens 15 / 30 / 60 / Off and actually stops playback when it runs
-    out. Chapters opens the real chapter list and seeking to one moves the scrubber.
+    out. Chapters takes the cover's place and becomes the iOS-style wheel drum — settle on a
+    chapter and the scrubber follows.
   </p>
   <p>
     The engine is real: one second of your time is thirty seconds of book time, multiplied by speed.
@@ -65,14 +66,14 @@
 <script>
 var A = window.AB;
 
-/* the cover and the chapter list want the same room; in A and B they share it */
+/* the cover and the chapter wheel want the same room; in A and B they share it.
+   Chapters takes the cover's place as the iOS time-picker drum, not a list. */
 function coverOrChapters(b, st, cls) {
   if (st.chaps) {
-    return '<div class="inline inline--flex"><div class="chaps chaps--flex" data-keep="chaps">' +
-      A.chapterListRows(b) + '</div></div>';
+    return '<div class="inline inline--flex">' + A.wheelBox(b) + '</div>';
   }
   return '<span class="cover pl-cover ' + (cls || '') + ' c' + b.tone + '" aria-hidden="true">' +
-    A.coverHTML(b, 600) + '</span>';
+    A.coverHTML(b, 600) + '<span class="scrim"></span></span>';
 }
 function identity(b, center) {
   return '<div class="pl-id"' + (center ? ' style="text-align:center"' : '') + '>' +
