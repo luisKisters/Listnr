@@ -1,4 +1,4 @@
-# Audiobookr — Tech Stack & Architecture
+# Listnr — Tech Stack & Architecture
 
 Goal: ship the MVP fast, native, no dead-end stack.
 

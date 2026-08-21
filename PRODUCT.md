@@ -2,6 +2,10 @@
 
 <!-- impeccable:product-schema 1 -->
 
+## Name
+
+**Listnr** (confirmed 2026-08-21) — "listener"; follows the notetakr/orbitr/launchr naming pattern (English word, dropped vowel, ends in -r). Repo: github.com/luisKisters/Listnr.
+
 ## Platform
 
 ios

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   AUDIOBOOKR · shared app model, player engine and Phone driver.
+   LISTNR · shared app model, player engine and Phone driver.
 
    Every variant on every page is one Phone instance. A Phone owns its own copy
    of the library, so playing in variant A never moves variant B, and its own
@@ -13,8 +13,8 @@
 
   /* ── schemes + guides persistence ───────────────────────────────────────── */
   var SCHEMES = { '1': { name: 'Black · Purple' }, '2': { name: 'Black · Neon' } };
-  var KEY_SCHEME = 'audiobookr-scheme';
-  var KEY_GUIDES = 'audiobookr-guides';
+  var KEY_SCHEME = 'listnr-scheme';
+  var KEY_GUIDES = 'listnr-guides';
   var root = document.documentElement;
   var panels = [];
 
@@ -549,7 +549,7 @@
     var head = document.querySelector('.pg-head');
     if (head) {
       head.innerHTML =
-        '<span class="pg-head__brand">audiobookr</span>' +
+        '<span class="pg-head__brand">listnr</span>' +
         '<span class="pg-head__note">' + esc(note || '') + '</span>' +
         '<nav class="pg-head__nav" aria-label="Mockups">' + PAGES.map(function (pg) {
           return '<a href="' + pg[0] + '"' + (pg[0] === current ? ' aria-current="page"' : '') + '>' + pg[1] + '</a>';
