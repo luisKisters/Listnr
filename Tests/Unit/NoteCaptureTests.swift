@@ -25,10 +25,13 @@ final class NoteCaptureTests: XCTestCase {
         XCTAssertTrue(model.engine.isPlaying, "save must resume playback")
         XCTAssertFalse(model.noteCaptureActive)
 
+        XCTAssertEqual(model.currentBookID != nil, true, "sample library must expose a listening book")
         let notes = model.notesForCurrentBook
         XCTAssertEqual(notes.count, 1)
-        XCTAssertEqual(notes[0].text, "Rocky explains physics")
-        XCTAssertEqual(notes[0].timestamp, 10, accuracy: 0.001)
+        if let first = notes.first {
+            XCTAssertEqual(first.text, "Rocky explains physics")
+            XCTAssertEqual(first.timestamp, 10, accuracy: 0.001)
+        }
     }
 
     func testCancelResumesWithoutSaving() {

@@ -60,7 +60,7 @@ struct LibraryView: View {
 
     /// Quiet filter words — no pills, no boxes; weight and colour carry state.
     private var filterRow: some View {
-        HStack(spacing: 18) {
+        FlowRow(spacing: 18, lineSpacing: 2) {
             ForEach(LibraryFilter.allCases, id: \.self) { f in
                 Button {
                     filter = f
@@ -73,7 +73,6 @@ struct LibraryView: View {
                 .accessibilityLabel("Filter \(f.label)")
                 .accessibilityAddTraits(f == filter ? [.isSelected] : [])
             }
-            Spacer(minLength: 0)
         }
     }
 
@@ -203,7 +202,7 @@ struct BookRowView: View {
         }
         .padding(.vertical, 13)
         .opacity(book.progress >= 0.999 ? 0.85 : 1)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(book.title) by \(book.author), \(meta)")
         .accessibilityAddTraits(.isButton)
     }

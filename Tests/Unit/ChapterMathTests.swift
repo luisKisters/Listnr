@@ -21,14 +21,15 @@ final class ChapterMathTests: XCTestCase {
     }
 
     func testNextChapterStart() {
-        XCTAssertEqual(ChapterMath.nextChapterStart(position: 10, duration: duration, count: count), 120)
+        // chapter length here is 60s
+        XCTAssertEqual(ChapterMath.nextChapterStart(position: 10, duration: duration, count: count), 60)
         XCTAssertNil(ChapterMath.nextChapterStart(position: 550, duration: duration, count: count))
     }
 
     func testPreviousRestartsCurrentAfterWindow() {
-        // 90s into chapter 1 (starts at 60): past the 4s window -> restart at 60
+        // 30s into chapter 2 (starts at 60): past the 4s window -> restart at 60
         XCTAssertEqual(
-            ChapterMath.previousChapterStart(position: 150, duration: duration, count: count),
+            ChapterMath.previousChapterStart(position: 90, duration: duration, count: count),
             60)
     }
 

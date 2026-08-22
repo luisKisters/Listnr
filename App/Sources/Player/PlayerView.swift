@@ -144,7 +144,7 @@ struct PlayerView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.inset)
-        .accessibilityLabel("Chapters")
+        .accessibilityLabel("Chapters: \(book.currentChapter?.title ?? "none")")
     }
 
     private func scrubber(_ book: Book) -> some View {

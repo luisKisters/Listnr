@@ -37,7 +37,7 @@ final class AppModel: ObservableObject {
         } else {
             currentBookID = store.books.first(where: { $0.hasAudio })?.id
         }
-        loadCurrentBook(into: engine)
+        loadCurrentBook(into: self.engine)
 
         self.engine.onChange = { [weak self] in self?.engineChanged() }
     }
@@ -95,6 +95,8 @@ final class AppModel: ObservableObject {
     // MARK: engine state -> store
 
     func engineChanged() {
+        // the engine is not itself observed by views; forward its changes
+        objectWillChange.send()
         guard let book = currentBook else { return }
         updateNowPlaying(book: book)
         if !engine.isPlaying {

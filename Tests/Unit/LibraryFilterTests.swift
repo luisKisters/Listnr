@@ -18,7 +18,7 @@ final class LibraryFilterTests: XCTestCase {
             book("Bravo", formats: [.audio]),                                     // new
             book("Charlie", formats: [.ebook], page: 80, pageCount: 100),         // in progress
             book("Delta", formats: [.audio, .ebook], position: 10),               // paired
-            book("Echo", formats: [.audio], position: 99.9),                      // finished
+            book("Echo", formats: [.audio], duration: 300, position: 300),         // finished
         ]
     }
 
@@ -59,13 +59,18 @@ final class LibraryFilterTests: XCTestCase {
         let byTitle = LibraryQuery.books(from: library, filter: .all, sort: .title, query: "")
         XCTAssertEqual(byTitle.first?.title, "Alpha")
         let byLength = LibraryQuery.sorted(library, by: .length)
-        XCTAssertEqual(byLength.map(\.title).first, "Echo")   // 99.9 rounds to 100
+        XCTAssertEqual(byLength.map(\.title).first, "Echo")   // longest duration
     }
 
     func testRecentRankPinsResumeBooks() {
-        let alphaID = library[0].id
-        let deltaID = library[3].id
-        let result = LibraryQuery.sorted(library, by: .recent, recentIDs: [deltaID, alphaID])
-        XCTAssertEqual(result.prefix(2).map(\.title), ["Delta", "Alpha"])
+        // built inline so the pinned IDs belong to this exact array
+        let books = [
+            book("Alpha", formats: [.audio], position: 50),
+            book("Bravo", formats: [.audio]),
+            book("Charlie", formats: [.ebook], page: 80, pageCount: 100),
+        ]
+        let result = LibraryQuery.sorted(
+            books, by: .recent, recentIDs: [books[2].id, books[0].id])
+        XCTAssertEqual(result.prefix(2).map(\.title), ["Charlie", "Alpha"])
     }
 }

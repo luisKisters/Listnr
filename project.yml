@@ -17,10 +17,8 @@ targets:
     platform: iOS
     sources:
       - path: App/Sources
-    resources:
       - path: Fixtures
         buildPhase: resources
-        type: group
     info:
       path: App/Info.plist
       properties:
@@ -42,6 +40,9 @@ targets:
     sources: [Tests/Unit]
     dependencies:
       - target: Listnr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 
   ListnrUITests:
     type: bundle.ui-testing
@@ -49,6 +50,9 @@ targets:
     sources: [Tests/UI]
     dependencies:
       - target: Listnr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Listnr:

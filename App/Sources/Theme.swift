@@ -57,6 +57,7 @@ struct CoverView: View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .strokeBorder(Theme.line2, lineWidth: 1)
         )
+        .accessibilityHidden(true)
     }
 
     private var tone: Color {
@@ -72,11 +73,16 @@ enum Fmt {
         return String(format: "%d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60)
     }
 
-    /// 3h 05m / 42m
+    /// 3h 05m / 42m — minutes round, so a 56 s remainder reads "1m".
     static func span(_ s: TimeInterval) -> String {
         let t = Int(max(0, s.rounded()))
-        let h = t / 3600, m = (t % 3600) / 60
-        if h > 0 { return "\(h)h \(String(format: "%02d", m))m" }
+        let h = t / 3600
+        let m = Int((Double(t % 3600) / 60.0).rounded())
+        if h > 0 {
+            if m == 60 { return "\(h + 1)h 00m" }
+            return "\(h)h \(String(format: "%02d", m))m"
+        }
+        if m == 0 { return t > 0 ? "<1m" : "0m" }
         return "\(m)m"
     }
 
