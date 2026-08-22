@@ -56,6 +56,9 @@ enum Theme {
 struct CoverView: View {
     let book: Book
     var cornerRadius: CGFloat = 10
+    /// Variant B: when set, a progress band rides inside the cover's bottom
+    /// edge. `nil` for an unstarted book and for screens that do not want it.
+    var progress: Double?
 
     var body: some View {
         ZStack(alignment: .center) {
@@ -66,6 +69,11 @@ struct CoverView: View {
             Text(String(book.title.prefix(1)))
                 .font(.system(size: 28, weight: .bold, design: .serif))
                 .foregroundColor(Theme.ink2)
+        }
+        .overlay(alignment: .bottom) {
+            if let progress {
+                CoverProgressBand(fraction: progress)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(
@@ -109,19 +117,25 @@ enum Fmt {
     }
 }
 
-/// The thin progress grammar shared by every row (kit.css `.line`).
-struct ProgressLine: View {
+/// kit.css `.cover .inline-p` — the band that rides inside the cover's own
+/// bottom edge: a hairline, a dark plate, and the accent filled from the left.
+/// It is always clipped by the cover's corner radius, so it cannot escape.
+struct CoverProgressBand: View {
     let fraction: Double
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Theme.line2)
-                Capsule().fill(Theme.accentInk)
-                    .frame(width: max(0, min(1, fraction)) * geo.size.width)
+        VStack(spacing: 0) {
+            Theme.ink3.frame(height: 1)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Color.black.opacity(0.62)
+                    Theme.accent
+                        .frame(width: max(0, min(1, fraction)) * geo.size.width)
+                }
             }
+            .frame(height: 4)
         }
-        .frame(height: 2)
+        .frame(height: 5)
         .accessibilityHidden(true)
     }
 }

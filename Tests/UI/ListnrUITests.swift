@@ -32,9 +32,15 @@ final class ListnrUITests: XCTestCase {
         return !element.exists
     }
 
-    /// Taps a filter and gives the diff animation a moment to settle.
+    /// Opens the header filter menu, picks a choice, and gives the diff
+    /// animation a moment to settle.
     private func filter(_ app: XCUIApplication, name: String) {
-        app.buttons["Filter \(name)"].tap()
+        let menu = app.buttons["Filter"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 8), "filter menu missing")
+        menu.tap()
+        let item = app.buttons[name]
+        XCTAssertTrue(item.waitForExistence(timeout: 6), "filter item \(name) missing")
+        item.tap()
         usleep(400_000)
     }
 

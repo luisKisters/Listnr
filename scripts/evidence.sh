@@ -10,7 +10,8 @@ DEST_ID=$(xcrun simctl list devices | grep "iPhone 17 Pro (" | head -1 | grep -o
 xcrun simctl boot "$DEST_ID" 2>/dev/null || true
 xcrun simctl bootstatus "$DEST_ID" -b
 
-APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/Listnr-*/Build/Products/Debug-iphonesimulator/Listnr.app | head -1)
+# newest build first — several worktrees share the DerivedData folder
+APP=$(ls -dt ~/Library/Developer/Xcode/DerivedData/Listnr-*/Build/Products/Debug-iphonesimulator/Listnr.app | head -1)
 xcrun simctl install "$DEST_ID" "$APP"
 mkdir -p artifacts
 
