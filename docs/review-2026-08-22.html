@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listnr V0 — Review 2026-08-22</title>
+<style>
+  :root { color-scheme: dark; }
+  body { background:#050505; color:#eee; font:15px/1.55 -apple-system, system-ui, sans-serif;
+         max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; letter-spacing: -0.02em; }
+  h2 { font-size: 19px; margin-top: 40px; border-top: 1px solid rgba(255,255,255,.12); padding-top: 18px; }
+  .meta { color: rgba(255,255,255,.5); font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.08);
+           vertical-align: top; font-size: 14px; }
+  th { color: rgba(255,255,255,.5); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+  code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+  .pass { color: #7ee787; font-weight: 600; }
+  .fix  { color: #a78bfa; font-weight: 600; }
+  img { max-width: 32%; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); margin: 4px 4px 4px 0; }
+</style>
+</head>
+<body>
+<h1>Listnr V0 — Review document</h1>
+<p class="meta">Branch <code>t3code/interactive-library-mockup</code> → <code>main</code> · reviewed locally before push ·
+reviewer brief applied: remove verbose code, unnecessary tests, non-requested features.</p>
+
+<h2>Scope delivered</h2>
+<ul>
+  <li>iOS app (Swift 6, SwiftUI, iOS 17+, XcodeGen project) implementing the locked mockups:
+      four tabs, Library variant A, Player variant A with scrimmed cover and native wheel chapter picker.</li>
+  <li>AVFoundation player engine behind a protocol (deterministic mock for tests/previews),
+      background audio session, lock-screen now-playing + remote commands, speed cycling,
+      sleep timer that really stops playback.</li>
+  <li>Timestamped notes with auto-pause/resume and jump-to-timestamp list inside the note sheet.</li>
+  <li>SwiftData persistence with deterministic in-memory mode (<code>-uitest</code>) and fixed sample library
+      seeded from committed fixtures (generated sine-wave audiobooks).</li>
+  <li>Verification infrastructure: <code>scripts/test.sh dev|full</code>, <code>scripts/verify.sh</code>
+      (grep gates incl. accessibility-label gate, swiftlint, build, unit suite), evidence screenshots.</li>
+</ul>
+
+<h2>Review findings and fixes applied</h2>
+<table>
+  <tr><th>#</th><th>Finding</th><th>Action</th></tr>
+  <tr><td>1</td><td><code>AppModel.init</code> loaded the book into the injected engine parameter, not <code>self.engine</code> — with the default nil the player never loaded (position/duration zero).</td><td class="fix">fixed — loads into <code>self.engine</code>; UI test caught it</td></tr>
+  <tr><td>2</td><td>Force unwrap <code>first { … }!</code> in <code>openResumeListening</code>.</td><td class="fix">replaced with guard/compact path</td></tr>
+  <tr><td>3</td><td>Pointless ternary <code>isPlaying ? speed : speed</code> and needless optional cast around <code>NowPlaying.build</code>; unused <code>suspendedByNote</code> state.</td><td class="fix">removed</td></tr>
+  <tr><td>4</td><td>Library row progress line used a greedy GeometryReader and stretched wider than the cover column.</td><td class="fix">pinned to 64 pt, matching variant A's "line belongs to the cover" rule</td></tr>
+  <tr><td>5</td><td>Filter words clipped off-screen on narrow widths (mockup uses flex-wrap).</td><td class="fix">custom <code>FlowRow</code> Layout mirrors flex-wrap</td></tr>
+  <tr><td>6</td><td>Engine state changes were invisible to SwiftUI (engine not observed).</td><td class="fix"><code>AppModel.engineChanged()</code> forwards via <code>objectWillChange</code></td></tr>
+  <tr><td>7</td><td>Mic usage string declared but nothing uses the microphone.</td><td class="fix">removed from Info.plist</td></tr>
+  <tr><td>8</td><td>UI tests initially matched pinned resume cards when checking row absence ("Sea of Tranquility" prefix matched "Resume reading: …").</td><td class="fix">row queries target the "… by …" label shape; absence asserts poll</td></tr>
+</table>
+
+<h2>Deliberately not built (per PRODUCT.md / ideas.md)</h2>
+<ul>
+  <li>Real M4B chapter-metadata parsing (even-split chapters mirror the mockup model; real parsing lands with real user files).</li>
+  <li>EPUB import, Reader screen content, Scan pipeline — under-construction screens by locked decision.</li>
+  <li>Automated TestFlight upload — no App Store Connect API key in this environment (documented manual path instead).</li>
+</ul>
+
+<h2>Validation evidence</h2>
+<table>
+  <tr><th>Command</th><th>Result</th></tr>
+  <tr><td><code>scripts/verify.sh</code></td><td class="pass">ALL GATES GREEN — 6 grep gates, swiftlint clean, build succeeded, unit suite green</td></tr>
+  <tr><td><code>scripts/test.sh full</code></td><td class="pass">Executed 24 unit tests, 0 failures · Executed 6 UI tests, 0 failures</td></tr>
+  <tr><td>Screenshots</td><td><img src="../artifacts/01-library.png" alt="Library"><img src="../artifacts/02-player.png" alt="Player"><img src="../artifacts/03-reader-construction.png" alt="Reader"></td></tr>
+</table>
+
+<h2>Open questions for the human</h2>
+<ul>
+  <li>Covers are tone-gradient placeholders with an initial letter. Real artwork arrives with real imports — keep?</li>
+  <li>Note capture lives in the player top row (right side). The mockup leaves that slot empty; PRODUCT.md makes notes MVP scope. Confirm placement.</li>
+  <li>Bundle id is <code>com.luisKisters.Listnr</code>, team left automatic. Set your signing team before device install.</li>
+</ul>
+</body>
+</html>

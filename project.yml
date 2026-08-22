@@ -1,0 +1,68 @@
+name: Listnr
+options:
+  bundleIdPrefix: com.luisKisters
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: NO
+
+targets:
+  Listnr:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: Fixtures
+        buildPhase: resources
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Listnr
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIBackgroundModes: [audio]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.luisKisters.Listnr
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+
+  ListnrTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/Unit]
+    dependencies:
+      - target: Listnr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+  ListnrUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/UI]
+    dependencies:
+      - target: Listnr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Listnr:
+    build:
+      targets:
+        Listnr: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - ListnrTests
+        - ListnrUITests
