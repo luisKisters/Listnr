@@ -78,13 +78,13 @@ struct NoteSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Cancel") { // gate-ok: text-labelled toolbar action
                         model.cancelNoteCapture()
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("Save") { // gate-ok: text-labelled toolbar action
                         model.saveNote(text: text)
                         dismiss()
                     }
@@ -121,6 +121,7 @@ struct NotesListView: View {
                             .multilineTextAlignment(.leading)
                     }
                 }
+                .accessibilityLabel("Note at \(Fmt.hms(note.timestamp)): \(note.text)")
             }
             .onDelete { indexSet in
                 for i in indexSet {
