@@ -28,7 +28,6 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [audio]
-        NSMicrophoneUsageDescription: "Not used in this version."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.luisKisters.Listnr

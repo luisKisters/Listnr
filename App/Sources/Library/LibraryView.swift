@@ -175,11 +175,12 @@ struct BookRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            VStack(spacing: 5) {
+            VStack(alignment: .leading, spacing: 5) {
                 CoverView(book: book)
                     .frame(width: 64, height: 64)
                 // variant A: progress under the cover, as wide as the cover
                 ProgressLine(fraction: book.progress)
+                    .frame(width: 64)
                     .opacity(book.progress > 0.001 && book.progress < 0.999 ? 1 : 0)
             }
             VStack(alignment: .leading, spacing: 3) {

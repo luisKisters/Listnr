@@ -39,6 +39,13 @@ final class AppModel: ObservableObject {
         }
         loadCurrentBook(into: self.engine)
 
+        // deep-launch support: `-tab audiobook|reader|scan|library`
+        let argv = ProcessInfo.processInfo.arguments
+        if let i = argv.firstIndex(of: "-tab"), i + 1 < argv.count,
+           let t = Tab(rawValue: argv[i + 1]) {
+            tab = t
+        }
+
         self.engine.onChange = { [weak self] in self?.engineChanged() }
     }
 
@@ -60,8 +67,9 @@ final class AppModel: ObservableObject {
     }
 
     func openResumeListening() {
-        guard let id = store.lastListenedID ?? store.books.first(where: { $0.hasAudio })?.id else { return }
-        openInPlayer(store.books.first { $0.id == id }!)
+        let id = store.lastListenedID ?? store.books.first(where: { $0.hasAudio })?.id
+        guard let id, let book = store.books.first(where: { $0.id == id }), book.hasAudio else { return }
+        openInPlayer(book)
     }
 
     func openResumeReading() {
@@ -110,16 +118,11 @@ final class AppModel: ObservableObject {
     }
 
     private func updateNowPlaying(book: Book) {
-        guard let info = NowPlaying.build(
+        guard engine is AudioPlayerEngine else { return }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = NowPlaying.build(
             title: book.title, author: book.author,
             chapter: book.currentChapter?.title,
-            position: engine.position, duration: engine.duration, rate: engine.isPlaying ? engine.speed : 0
-        ) as [String: Any]? else { return }
-        #if canImport(MediaPlayer)
-        if engine is AudioPlayerEngine {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        }
-        #endif
+            position: engine.position, duration: engine.duration, rate: engine.isPlaying ? engine.speed : 0)
     }
 
     // MARK: transport passthroughs used by views

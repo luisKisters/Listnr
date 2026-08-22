@@ -9,8 +9,6 @@ import MediaPlayer
 final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
     private var player: AVAudioPlayer?
     private var ticker: Timer?
-    /// True while a note sheet holds playback paused.
-    var suspendedByNote = false
 
     @Published private(set) var isPlaying = false
     @Published private(set) var position: TimeInterval = 0
@@ -100,7 +98,6 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
 
     func play() {
         guard !isPlaying else { return }
-        suspendedByNote = false
         player?.rate = Float(speed)
         player?.play()
         isPlaying = true
@@ -131,7 +128,7 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
     func setSpeed(_ speed: Double) {
         self.speed = speed
         player?.enableRate = true
-        player?.rate = Float(isPlaying ? speed : speed)
+        player?.rate = Float(speed)
         emit()
     }
 
