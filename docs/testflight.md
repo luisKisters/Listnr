@@ -4,6 +4,8 @@ Two ways, both work with your paid Apple Developer account. No renewal churn:
 with a paid account a development-signed build stays valid for the provisioning
 profile lifetime (about a year), not 7 days.
 
+**Device requirement: iOS 26.0 or later.** The deployment target is iOS 26 — the app uses the Liquid Glass tab bar, so an older iPhone cannot install this build.
+
 ## Way A — direct install from Xcode (fastest, no TestFlight)
 
 1. Connect your iPhone with a cable, unlock it, tap "Trust".

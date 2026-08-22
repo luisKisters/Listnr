@@ -2,6 +2,8 @@ import SwiftUI
 
 /// The design tokens of mockups/kit.css, translated once. Views never invent
 /// colors or sizes; the three rules live in design/LOCKED.md.
+///
+/// Scheme 1 (Black · Purple) only; `data-scheme="2"` never ships.
 enum Theme {
     static let bg = Color(red: 0.02, green: 0.02, blue: 0.02)                 // #050505
     static let raise = Color(red: 0.051, green: 0.051, blue: 0.051)           // #0d0d0d
@@ -26,6 +28,19 @@ enum Theme {
 
     /// The one horizontal inset.
     static let inset: CGFloat = 20
+
+    /// The cover column (kit.css `--cov`).
+    static let cover: CGFloat = 64
+
+    // spacing scale (kit.css :root)
+    static let s1: CGFloat = 4
+    static let s2: CGFloat = 8
+    static let s3: CGFloat = 12
+    static let s4: CGFloat = 16
+    static let s5: CGFloat = 24
+    static let s6: CGFloat = 32
+    static let s7: CGFloat = 48
+    static let s8: CGFloat = 64
 
     // type ramp
     static let tXS: CGFloat = 12

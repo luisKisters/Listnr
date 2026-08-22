@@ -26,22 +26,22 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $model.tab) {
-            LibraryView()
-                .tabItem { Label("Library", systemImage: "books.vertical") }
-                .tag(AppModel.Tab.library)
-            PlayerView()
-                .tabItem { Label("Audiobook", systemImage: "play.circle") }
-                .tag(AppModel.Tab.audiobook)
-            UnderConstructionView(
-                title: "Reader",
-                line: "The reader is not built yet — it arrives with the paired EPUB.")
-                .tabItem { Label("Reader", systemImage: "book") }
-                .tag(AppModel.Tab.reader)
-            UnderConstructionView(
-                title: "Scan",
-                line: "Scan-to-sync is not built yet — it arrives after notes.")
-                .tabItem { Label("Scan", systemImage: "viewfinder") }
-                .tag(AppModel.Tab.scan)
+            Tab("Library", systemImage: "books.vertical", value: AppModel.Tab.library) {
+                LibraryView()
+            }
+            Tab("Audiobook", systemImage: "play.circle", value: AppModel.Tab.audiobook) {
+                PlayerView()
+            }
+            Tab("Reader", systemImage: "book", value: AppModel.Tab.reader) {
+                UnderConstructionView(
+                    title: "Reader",
+                    line: "The reader is not built yet — it arrives with the paired EPUB.")
+            }
+            Tab("Scan", systemImage: "viewfinder", value: AppModel.Tab.scan) {
+                UnderConstructionView(
+                    title: "Scan",
+                    line: "Scan-to-sync is not built yet — it arrives after notes.")
+            }
         }
     }
 }
