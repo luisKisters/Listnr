@@ -150,6 +150,35 @@ final class ListnrUITests: XCTestCase {
                        "picker should close after choosing")
     }
 
+    // MARK: mini-player
+
+    func testMiniPlayerOnLibrary() {
+        let app = launch()
+        openPlayer(app)
+
+        // back to Library — the accessory only exists off the Audiobook tab
+        app.tabBars.firstMatch.buttons["Library"].tap()
+
+        let accessory = app.buttons["Now playing: Project Hail Mary"]
+        XCTAssertTrue(accessory.waitForExistence(timeout: 6), "mini-player missing on Library")
+
+        // its play key toggles playback and must not switch tabs
+        let play = app.buttons["Play"]
+        XCTAssertTrue(play.waitForExistence(timeout: 4), "mini-player play key missing")
+        play.tap()
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 4),
+                      "mini-player play key did not flip the label")
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Library"].isSelected,
+                      "the play key must not change tabs")
+        app.buttons["Pause"].tap()
+
+        // the body opens the player
+        accessory.tap()
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].isSelected,
+                      "tapping the accessory body must select the Audiobook tab")
+    }
+
     // MARK: notes
 
     func testNoteCaptureRoundTrip() {

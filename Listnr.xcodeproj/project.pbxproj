@@ -27,6 +27,7 @@
 		B1E4573F4B0276F0B6EDB88D /* UnderConstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CDAD54E9F960A5511A76CD9 /* UnderConstructionView.swift */; };
 		CFCDBC717F39119A1C2AB1D0 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D9C90162EE634FD486138B /* LibraryView.swift */; };
 		E5655B3992A1287F9B39DB6C /* ListnrStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D4A1B457C82E16B3599691 /* ListnrStore.swift */; };
+		EBA83F01BEEC3ED0FA9676A7 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4178C2FB80DBF689A93EAF1 /* MiniPlayerView.swift */; };
 		FF06CA74861C05AD32FDA8A0 /* bravo.m4a in Resources */ = {isa = PBXBuildFile; fileRef = E14B4F5EE329EC479274C3C3 /* bravo.m4a */; };
 /* End PBXBuildFile section */
 
@@ -72,6 +73,7 @@
 		E14B4F5EE329EC479274C3C3 /* bravo.m4a */ = {isa = PBXFileReference; path = bravo.m4a; sourceTree = "<group>"; };
 		E5D4A1B457C82E16B3599691 /* ListnrStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListnrStore.swift; sourceTree = "<group>"; };
 		ECC7E8845BFF03910E8D5585 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F4178C2FB80DBF689A93EAF1 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -177,6 +179,7 @@
 			isa = PBXGroup;
 			children = (
 				C5A9B60E17FF5F4574D94F3C /* ChaptersWheel.swift */,
+				F4178C2FB80DBF689A93EAF1 /* MiniPlayerView.swift */,
 				19F29C17986EBF56D5207384 /* NoteSheet.swift */,
 				055467793B9B0ECEE6373CC8 /* PlayerView.swift */,
 			);
@@ -336,6 +339,7 @@
 				CFCDBC717F39119A1C2AB1D0 /* LibraryView.swift in Sources */,
 				4000A45A545DCACFADB0DD14 /* ListnrApp.swift in Sources */,
 				E5655B3992A1287F9B39DB6C /* ListnrStore.swift in Sources */,
+				EBA83F01BEEC3ED0FA9676A7 /* MiniPlayerView.swift in Sources */,
 				4A9C717E75BC4A7D3E1C2397 /* Models.swift in Sources */,
 				2C28AB61C54A3B96191DE48B /* NoteSheet.swift in Sources */,
 				67EFB2723EC7983518E355F7 /* PlayerEngine.swift in Sources */,
