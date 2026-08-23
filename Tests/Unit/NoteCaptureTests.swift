@@ -46,6 +46,29 @@ final class NoteCaptureTests: XCTestCase {
         XCTAssertTrue(model.notesForCurrentBook.isEmpty, "blank notes are not saved")
     }
 
+    /// Tapping a previous note seeks and closes the sheet; the close path is
+    /// the sheet's own dismiss, so playback resumes only if it was playing.
+    func testNoteTapSeeksAndResumesOnlyIfPlaying() throws {
+        let playing = makeModel()
+        try playing.engine.load(url: URL(fileURLWithPath: "/tmp/alpha.m4a"), startPosition: 10, speed: 1)
+        playing.engine.play()
+        playing.beginNoteCapture()
+        XCTAssertFalse(playing.engine.isPlaying)
+
+        playing.selectChapterTimestamp(42)
+        playing.cancelNoteCapture()          // sheet dismissed by the tap
+        XCTAssertEqual(playing.engine.position, 42, accuracy: 0.001)
+        XCTAssertTrue(playing.engine.isPlaying, "note tap must resume playback that was running")
+
+        let paused = makeModel()
+        try paused.engine.load(url: URL(fileURLWithPath: "/tmp/alpha.m4a"), startPosition: 10, speed: 1)
+        paused.beginNoteCapture()
+        paused.selectChapterTimestamp(42)
+        paused.cancelNoteCapture()
+        XCTAssertEqual(paused.engine.position, 42, accuracy: 0.001)
+        XCTAssertFalse(paused.engine.isPlaying, "note tap must not start playback that was paused")
+    }
+
     func testSleepTimerStopsPlayback() {
         let model = makeModel()
         model.armSleep(minutes: nil)
