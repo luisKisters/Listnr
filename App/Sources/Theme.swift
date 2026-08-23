@@ -108,13 +108,6 @@ enum Fmt {
         if m == 0 { return t > 0 ? "<1m" : "0m" }
         return "\(m)m"
     }
-
-    /// "58s left" / "4m 12s left"
-    static func chapterLeft(_ s: TimeInterval) -> String {
-        let t = Int(max(0, s.rounded()))
-        if t >= 60 { return "\((t % 3600) / 60)m \(String(format: "%02d", t % 60))s left" }
-        return "\(t)s left"
-    }
 }
 
 /// kit.css `.cover .inline-p` — the band that rides inside the cover's own

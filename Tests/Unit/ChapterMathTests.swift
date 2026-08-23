@@ -46,15 +46,6 @@ final class ChapterMathTests: XCTestCase {
             0)
     }
 
-    func testTimeLeftInChapter() {
-        XCTAssertEqual(
-            ChapterMath.timeLeftInChapter(position: 90, duration: duration, count: count),
-            30, accuracy: 0.001)
-        XCTAssertEqual(
-            ChapterMath.timeLeftInChapter(position: 595, duration: duration, count: count),
-            5, accuracy: 0.001)
-    }
-
     func testSyntheticChaptersEvenSplit() {
         let book = Book(
             id: UUID(), title: "T", author: "A", formats: [.audio],

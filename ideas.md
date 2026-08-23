@@ -14,3 +14,10 @@ Checked before re-proposing anything below.
 - **EPUB import / Reader implementation** — V0 shows an under-construction screen by decision
   (PRODUCT.md). Nothing to build until pairing exists.
 - **Scan-to-sync** — same as above; Vision OCR pipeline is post-MVP.
+- **Player cover rail-to-rail on the device** — the mockup phone is `aspect-ratio:390/800`; a real
+  iPhone 17 Pro has 402×729 usable, proportionally taller and narrower. A square cover on the rails
+  (362pt) plus the step 3 margins (`s5` above, `s6` below, `s6` above the utility row, `s5` to the
+  tab bar) needs 770pt of a 729pt column. Measured, not estimated. Reaching the rails would cost
+  44pt taken out of those four margins and still leaves the cover 179pt short on an SE frame, so the
+  screen would be rail-to-rail on one phone and badly inset on another. The cover stays square and
+  inside the rails at whatever height is left. Revisit if the margins are ever reopened.

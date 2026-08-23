@@ -87,7 +87,5 @@ final class NowPlayingTests: XCTestCase {
         XCTAssertEqual(Fmt.hms(63), "0:01:03")
         XCTAssertEqual(Fmt.span(185 * 60), "3h 05m")
         XCTAssertEqual(Fmt.span(42 * 60), "42m")
-        XCTAssertEqual(Fmt.chapterLeft(4), "4s left")
-        XCTAssertEqual(Fmt.chapterLeft(125), "2m 05s left")
     }
 }

@@ -117,9 +117,11 @@ final class ListnrUITests: XCTestCase {
         let app = launch()
         openPlayer(app)
 
-        let chaptersButton = button(app, startingWith: "Chapters:")
-        XCTAssertTrue(chaptersButton.waitForExistence(timeout: 6), "chapter button missing")
-        chaptersButton.tap()
+        // the chapter line under the identity block is the only control that
+        // opens the wheel now — the separate chapter button is gone
+        let chapterLine = button(app, startingWith: "Chapters:")
+        XCTAssertTrue(chapterLine.waitForExistence(timeout: 6), "chapter line missing")
+        chapterLine.tap()
 
         let wheel = app.pickerWheels.firstMatch
         XCTAssertTrue(wheel.waitForExistence(timeout: 6), "chapter wheel missing")

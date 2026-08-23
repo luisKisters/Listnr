@@ -68,12 +68,4 @@ enum ChapterMath {
         guard i + 1 < count else { return nil }
         return start(of: i + 1, duration: duration, count: count)
     }
-
-    /// Time left in the current chapter, as shown by the middle scrubber label.
-    static func timeLeftInChapter(position: TimeInterval, duration: TimeInterval, count: Int) -> TimeInterval {
-        guard count > 0, duration > 0 else { return 0 }
-        let len = duration / Double(count)
-        let i = index(at: position, total: duration, count: count)
-        return max(0, (Double(i + 1) * len) - position)
-    }
 }
