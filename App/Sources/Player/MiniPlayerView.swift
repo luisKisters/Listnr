@@ -74,8 +74,7 @@ struct MiniPlayerView: View {
 
     /// Nil when the book carries no chapters — then the line is omitted.
     private func chapterName(_ book: Book) -> String? {
-        guard book.chapterCount > 0 else { return nil }
-        return book.currentChapter?.title
+        book.currentChapter?.title
     }
 
     private var playKey: some View {

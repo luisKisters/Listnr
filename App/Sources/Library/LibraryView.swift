@@ -221,7 +221,8 @@ struct ResumeRowView: View {
         if reading || !book.hasAudio {
             return book.formatWord
         }
-        return book.currentChapter?.title ?? "Chapter"
+        // No container chapters: the chapter part drops out entirely.
+        return book.currentChapter?.title ?? book.formatWord
     }
 
     private var rightText: String {

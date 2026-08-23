@@ -144,20 +144,26 @@ final class AppModel: ObservableObject {
         persistPosition()
     }
 
+    /// Falls back to a 15 s skip when the container declares no chapters.
     func previousChapter() {
         guard let book = currentBook else { return }
-        if let target = ChapterMath.previousChapterStart(
-            position: engine.position, duration: book.duration, count: book.chapterCount) {
-            engine.seek(to: target)
+        guard let target = ChapterMath.previousStart(
+            position: engine.position, in: book.chapters) else {
+            engine.skipBack(15)
+            return
         }
+        engine.seek(to: target)
     }
 
+    /// Falls back to a 30 s skip when the container declares no chapters.
     func nextChapter() {
         guard let book = currentBook else { return }
-        if let target = ChapterMath.nextChapterStart(
-            position: engine.position, duration: book.duration, count: book.chapterCount) {
-            engine.seek(to: min(target, max(0, engine.duration - 0.05)))
+        guard let target = ChapterMath.nextStart(
+            position: engine.position, in: book.chapters) else {
+            if book.chapters.isEmpty { engine.skipForward(30) }
+            return
         }
+        engine.seek(to: min(target, max(0, engine.duration - 0.05)))
     }
 
     func armSleep(minutes: Int?) {

@@ -42,7 +42,7 @@ struct PlayerView: View {
             VStack(spacing: 0) {
                 topRow(book).measuredAsFixed()
 
-                if showChapters {
+                if showChapters, !book.chapters.isEmpty {
                     ChaptersWheelView(
                         book: book,
                         position: model.engine.position,
@@ -189,13 +189,17 @@ struct PlayerView: View {
                 .foregroundColor(Theme.ink2)
                 .lineLimit(1)
                 .padding(.top, 3)
-            chapterLine(book)
+            if !book.chapters.isEmpty {
+                chapterLine(book)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.inset)
     }
 
     /// The only control that opens the wheel; it tints while the wheel is up.
+    /// Rendered only for a book that has real chapters, so it is never a dead
+    /// control — no chapters means no line at all.
     private func chapterLine(_ book: Book) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -203,7 +207,7 @@ struct PlayerView: View {
                 showSleep = false
             }
         } label: {
-            Text(book.currentChapter?.title ?? "Chapter")
+            Text(book.currentChapter?.title ?? "")
                 .font(.system(size: Theme.tSM, weight: .medium))
                 .tracking(-0.01 * Theme.tSM)
                 .lineLimit(1)

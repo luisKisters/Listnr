@@ -2,67 +2,105 @@ import XCTest
 @testable import Listnr
 
 final class ChapterMathTests: XCTestCase {
-    private let duration: TimeInterval = 600
-    private let count = 10
+    /// Deliberately uneven: an even split would not tell the boundary code from
+    /// the old count-based math. Starts: 0, 30, 100, 130, 260. End: 300.
+    private let chapters: [Chapter] = [
+        Chapter(id: 0, title: "One", start: 0, duration: 30),
+        Chapter(id: 1, title: "Two", start: 30, duration: 70),
+        Chapter(id: 2, title: "Three", start: 100, duration: 30),
+        Chapter(id: 3, title: "Four", start: 130, duration: 130),
+        Chapter(id: 4, title: "Five", start: 260, duration: 40),
+    ]
 
-    func testIndexAtBoundaries() {
-        XCTAssertEqual(ChapterMath.index(at: 0, total: duration, count: count), 0)
-        XCTAssertEqual(ChapterMath.index(at: 59, total: duration, count: count), 0)
-        XCTAssertEqual(ChapterMath.index(at: 60, total: duration, count: count), 1)
-        XCTAssertEqual(ChapterMath.index(at: 599.9, total: duration, count: count), 9)
-        // clamping beyond the end
-        XCTAssertEqual(ChapterMath.index(at: 99999, total: duration, count: count), 9)
-        XCTAssertEqual(ChapterMath.index(at: -5, total: duration, count: count), 0)
+    private let none: [Chapter] = []
+
+    // MARK: index
+
+    func testIndexInsideAndAtBoundaries() {
+        XCTAssertEqual(ChapterMath.index(at: 0, in: chapters), 0)
+        XCTAssertEqual(ChapterMath.index(at: 29.9, in: chapters), 0)
+        XCTAssertEqual(ChapterMath.index(at: 30, in: chapters), 1)
+        XCTAssertEqual(ChapterMath.index(at: 99.9, in: chapters), 1)
+        XCTAssertEqual(ChapterMath.index(at: 100, in: chapters), 2)
+        XCTAssertEqual(ChapterMath.index(at: 200, in: chapters), 3)
+        XCTAssertEqual(ChapterMath.index(at: 260, in: chapters), 4)
     }
 
-    func testDegenerateInputs() {
-        XCTAssertEqual(ChapterMath.index(at: 10, total: 0, count: 0), 0)
-        XCTAssertNil(ChapterMath.nextChapterStart(position: 0, duration: 100, count: 1))
+    func testIndexClampsOutsideTheBook() {
+        XCTAssertEqual(ChapterMath.index(at: -50, in: chapters), 0)
+        XCTAssertEqual(ChapterMath.index(at: 99_999, in: chapters), 4)
     }
 
-    func testNextChapterStart() {
-        // chapter length here is 60s
-        XCTAssertEqual(ChapterMath.nextChapterStart(position: 10, duration: duration, count: count), 60)
-        XCTAssertNil(ChapterMath.nextChapterStart(position: 550, duration: duration, count: count))
+    // MARK: next
+
+    func testNextStartUsesTheRealBoundary() {
+        XCTAssertEqual(ChapterMath.nextStart(position: 10, in: chapters), 30)
+        XCTAssertEqual(ChapterMath.nextStart(position: 99, in: chapters), 100)
+        XCTAssertEqual(ChapterMath.nextStart(position: 200, in: chapters), 260)
     }
 
-    func testPreviousRestartsCurrentAfterWindow() {
-        // 30s into chapter 2 (starts at 60): past the 4s window -> restart at 60
-        XCTAssertEqual(
-            ChapterMath.previousChapterStart(position: 90, duration: duration, count: count),
-            60)
+    func testNextStartIsNilAtTheLastChapter() {
+        XCTAssertNil(ChapterMath.nextStart(position: 260, in: chapters))
+        XCTAssertNil(ChapterMath.nextStart(position: 299, in: chapters))
     }
 
-    func testPreviousJumpsBackWithinWindow() {
-        // 2s into chapter 2 -> go to start of chapter 1
-        XCTAssertEqual(
-            ChapterMath.previousChapterStart(position: 122, duration: duration, count: count),
-            60)
+    // MARK: previous
+
+    func testPreviousRestartsTheCurrentChapterPastTheWindow() {
+        // 35 s into chapter four (starts at 130) — well past the 4 s window,
+        // so "previous" restarts chapter four itself.
+        XCTAssertEqual(ChapterMath.previousStart(position: 165, in: chapters), 130)
+        // Exactly at the window edge still counts as "still at the start".
+        XCTAssertEqual(ChapterMath.previousStart(position: 134, in: chapters), 100)
+        XCTAssertEqual(ChapterMath.previousStart(position: 134.01, in: chapters), 130)
     }
 
-    func testPreviousOnFirstChapterNeverNegative() {
-        XCTAssertEqual(
-            ChapterMath.previousChapterStart(position: 2, duration: duration, count: count),
-            0)
+    func testPreviousStepsBackInsideTheWindow() {
+        // 2 s into chapter four -> the start of chapter three.
+        XCTAssertEqual(ChapterMath.previousStart(position: 132, in: chapters), 100)
+        // 1 s into chapter two -> the start of chapter one.
+        XCTAssertEqual(ChapterMath.previousStart(position: 31, in: chapters), 0)
     }
 
-    func testSyntheticChaptersEvenSplit() {
+    func testPreviousOnTheFirstChapterNeverGoesNegative() {
+        XCTAssertEqual(ChapterMath.previousStart(position: 2, in: chapters), 0)
+        XCTAssertEqual(ChapterMath.previousStart(position: 0, in: chapters), 0)
+        XCTAssertEqual(ChapterMath.previousStart(position: 20, in: chapters), 0)
+    }
+
+    // MARK: the empty list — the whole "no synthetic splits" rule
+
+    func testEveryFunctionIsNilForAnEmptyChapterList() {
+        XCTAssertNil(ChapterMath.index(at: 0, in: none))
+        XCTAssertNil(ChapterMath.index(at: 500, in: none))
+        XCTAssertNil(ChapterMath.previousStart(position: 0, in: none))
+        XCTAssertNil(ChapterMath.previousStart(position: 500, in: none))
+        XCTAssertNil(ChapterMath.nextStart(position: 0, in: none))
+        XCTAssertNil(ChapterMath.nextStart(position: 500, in: none))
+    }
+
+    func testChapterTitleFallsBackToChapterN() {
+        XCTAssertEqual(ChapterMath.chapterTitle(index: 0), "Chapter 1")
+        XCTAssertEqual(ChapterMath.chapterTitle(index: 11), "Chapter 12")
+    }
+
+    // MARK: Book
+
+    func testCurrentChapterFollowsThePosition() {
+        var book = Book(
+            id: UUID(), title: "T", author: "A", formats: [.audio],
+            duration: 300, position: 0, chapters: chapters)
+        XCTAssertEqual(book.currentChapter?.title, "One")
+        book.position = 150
+        XCTAssertEqual(book.currentChapter?.title, "Four")
+    }
+
+    func testBookWithoutChaptersHasNoCurrentChapter() {
         let book = Book(
             id: UUID(), title: "T", author: "A", formats: [.audio],
-            duration: duration, position: 0,
-            chapterHint: .init(count: 6, word: "Kapitel", names: [2: "Vancouver"]))
-        let chapters = book.chapters
-        XCTAssertEqual(chapters.count, 6)
-        XCTAssertEqual(chapters[0].start, 0)
-        XCTAssertEqual(chapters[3].start, 300, accuracy: 0.001)
-        XCTAssertEqual(chapters[5].duration, 100, accuracy: 0.001)
-        XCTAssertEqual(chapters[0].title, "Kapitel 1")
-        XCTAssertEqual(chapters[1].title, "Kapitel 2 — Vancouver")
-        XCTAssertEqual(book.currentChapter?.id, 0)
-
-        var moved = book
-        moved.position = 350
-        XCTAssertEqual(moved.currentChapter?.id, 3)
+            duration: 300, position: 150)
+        XCTAssertTrue(book.chapters.isEmpty)
+        XCTAssertNil(book.currentChapter)
     }
 
     func testFormatWordAndPaired() {

@@ -1,71 +1,44 @@
 import Foundation
 
-/// Chapter math. The mockup model is the contract: chapters divide the book
-/// evenly unless real container metadata says otherwise; "previous" restarts
-/// the current chapter only in its first four seconds.
+/// Chapter math over the real chapter boundaries a container declares.
+/// Nothing is ever fabricated: an empty chapter list stays empty and every
+/// function here answers nil for it. "Previous" restarts the current chapter
+/// once more than `restartWindow` seconds into it.
 enum ChapterMath {
     static let restartWindow: TimeInterval = 4
 
-    /// Evenly divided synthetic chapters, used when a container carries no
-    /// chapter metadata. Mirrors mockups/app.js `chapLen` exactly.
-    static func syntheticChapters(for book: Book, count: Int) -> [Chapter] {
-        guard count > 0 else { return [] }
-        let len = book.duration / Double(count)
-        return (0..<count).map { i in
-            Chapter(
-                id: i,
-                title: chapterTitle(index: i, count: count, names: [:]),
-                start: Double(i) * len,
-                duration: len
-            )
+    /// Fallback display name for a chapter group the container did not name.
+    static func chapterTitle(index: Int) -> String {
+        "Chapter \(index + 1)"
+    }
+
+    /// Index of the chapter containing `position`, clamped into the list.
+    /// Nil when there are no chapters.
+    static func index(at position: TimeInterval, in chapters: [Chapter]) -> Int? {
+        guard !chapters.isEmpty else { return nil }
+        var found = 0
+        for (i, chapter) in chapters.enumerated() where position >= chapter.start {
+            found = i
         }
+        return found
     }
 
-    /// The display name of one chapter: "Chapter 12 — Rocky" when a name exists.
-    static func chapterTitle(index: Int, count: Int, names: [Int: String], word: String = "Chapter") -> String {
-        let n = index + 1
-        guard n <= max(count, 0) else { return "\(word) \(n)" }
-        if let name = names[n], !name.isEmpty {
-            return "\(word) \(n) — \(name)"
-        }
-        return "\(word) \(n)"
+    /// Target position for "previous chapter": more than `restartWindow` into
+    /// the current chapter it restarts that chapter, otherwise it goes to the
+    /// one before. Never negative, nil when there are no chapters.
+    static func previousStart(position: TimeInterval, in chapters: [Chapter]) -> TimeInterval? {
+        guard let i = index(at: position, in: chapters) else { return nil }
+        let start = chapters[i].start
+        if position - start > restartWindow { return max(0, start) }
+        guard i > 0 else { return max(0, start) }
+        return max(0, chapters[i - 1].start)
     }
 
-    static func index(at position: TimeInterval, total duration: TimeInterval, count: Int) -> Int {
-        guard count > 0, duration > 0 else { return 0 }
-        let len = duration / Double(count)
-        return min(count - 1, max(0, Int(position / len)))
-    }
-
-    /// Start time of `index`, clamped into the book.
-    static func start(of index: Int, duration: TimeInterval, count: Int) -> TimeInterval {
-        guard count > 0, duration > 0 else { return 0 }
-        let len = duration / Double(count)
-        return min(duration, Double(max(0, index)) * len)
-    }
-
-    /// Target position for "previous chapter": inside the first `restartWindow`
-    /// seconds of the current chapter it goes to the chapter before, otherwise
-    /// it restarts the current one. Returns nil at the very first chapter.
-    static func previousChapterStart(
-        position: TimeInterval, duration: TimeInterval, count: Int
-    ) -> TimeInterval? {
-        guard count > 0 else { return nil }
-        let i = index(at: position, total: duration, count: count)
-        if position - start(of: i, duration: duration, count: count) > restartWindow {
-            return start(of: i, duration: duration, count: count)
-        }
-        guard i > 0 else { return start(of: 0, duration: duration, count: count) }
-        return start(of: i - 1, duration: duration, count: count)
-    }
-
-    /// Target position for "next chapter"; nil means already at the last one.
-    static func nextChapterStart(
-        position: TimeInterval, duration: TimeInterval, count: Int
-    ) -> TimeInterval? {
-        guard count > 0 else { return nil }
-        let i = index(at: position, total: duration, count: count)
-        guard i + 1 < count else { return nil }
-        return start(of: i + 1, duration: duration, count: count)
+    /// Target position for "next chapter"; nil at the last chapter and when
+    /// there are no chapters.
+    static func nextStart(position: TimeInterval, in chapters: [Chapter]) -> TimeInterval? {
+        guard let i = index(at: position, in: chapters) else { return nil }
+        guard i + 1 < chapters.count else { return nil }
+        return chapters[i + 1].start
     }
 }

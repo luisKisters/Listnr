@@ -1,13 +1,5 @@
 import Foundation
 
-/// Where a book's chapters come from when the container has no metadata:
-/// an even split with display metadata.
-struct ChapterHint: Hashable, Sendable {
-    var count: Int
-    var word: String
-    var names: [Int: String]
-}
-
 /// One book in any mix of formats. A paired title carries both formats and one
 /// shared position — the position lives on the audio side when audio exists.
 struct Book: Identifiable, Hashable, Sendable {
@@ -32,13 +24,25 @@ struct Book: Identifiable, Hashable, Sendable {
     var page: Int
     /// Index into the five muted cover tones of the design system.
     var tone: Int
-    var chapterHint: ChapterHint?
+    /// The real chapters read from the audio container. Empty when the
+    /// container declares none — the list is never fabricated.
+    var chapters: [Chapter]
+    /// File name of the extracted cover art inside `Application Support/Covers`.
+    var coverFileName: String?
+    /// The imported folder this book came from, when it was imported.
+    var sourceFolderID: UUID?
+    /// Path of the audio file relative to its source folder.
+    var relativePath: String?
+    /// True when the file vanished from its source folder. Rows are never
+    /// deleted — notes and position survive.
+    var isMissing: Bool
 
     init(
         id: UUID, title: String, author: String, narrator: String? = nil,
         formats: Set<Format>, audioURL: URL? = nil, duration: TimeInterval = 0,
         position: TimeInterval = 0, speed: Double = 1, pageCount: Int = 0, page: Int = 0,
-        tone: Int = 1, chapterHint: ChapterHint? = nil
+        tone: Int = 1, chapters: [Chapter] = [], coverFileName: String? = nil,
+        sourceFolderID: UUID? = nil, relativePath: String? = nil, isMissing: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -52,31 +56,21 @@ struct Book: Identifiable, Hashable, Sendable {
         self.pageCount = pageCount
         self.page = page
         self.tone = tone
-        self.chapterHint = chapterHint
+        self.chapters = chapters
+        self.coverFileName = coverFileName
+        self.sourceFolderID = sourceFolderID
+        self.relativePath = relativePath
+        self.isMissing = isMissing
     }
 
     var hasAudio: Bool { formats.contains(.audio) }
     var hasEbook: Bool { formats.contains(.ebook) }
     var isPaired: Bool { formats.count > 1 }
 
-    var chapterCount: Int { chapterHint?.count ?? 0 }
-
-    /// The chapter list this book plays with: even split plus display names.
-    var chapters: [Chapter] {
-        guard hasAudio else { return [] }
-        let hint = chapterHint ?? ChapterHint(count: max(1, Int(duration / 600)), word: "Chapter", names: [:])
-        return ChapterMath.syntheticChapters(for: self, count: hint.count).map { ch in
-            Chapter(
-                id: ch.id,
-                title: ChapterMath.chapterTitle(index: ch.id, count: hint.count, names: hint.names, word: hint.word),
-                start: ch.start, duration: ch.duration)
-        }
-    }
-
+    /// The chapter `position` falls into; nil when the book has no chapters.
     var currentChapter: Chapter? {
-        let list = chapters
-        guard !list.isEmpty else { return nil }
-        return list[ChapterMath.index(at: position, total: duration, count: list.count)]
+        guard let i = ChapterMath.index(at: position, in: chapters) else { return nil }
+        return chapters[i]
     }
 
     var progress: Double {
@@ -96,8 +90,8 @@ struct Book: Identifiable, Hashable, Sendable {
     }
 }
 
-/// One chapter of an audiobook.
-struct Chapter: Identifiable, Hashable, Sendable {
+/// One chapter of an audiobook, exactly as the container declares it.
+struct Chapter: Identifiable, Hashable, Sendable, Codable {
     let id: Int
     var title: String
     var start: TimeInterval

@@ -45,8 +45,7 @@ struct ChaptersWheelView: View {
     }
 
     private var currentIndex: Chapter.ID? {
-        let list = book.chapters
-        guard !list.isEmpty else { return nil }
-        return list[ChapterMath.index(at: position, total: book.duration, count: list.count)].id
+        guard let i = ChapterMath.index(at: position, in: book.chapters) else { return nil }
+        return book.chapters[i].id
     }
 }
