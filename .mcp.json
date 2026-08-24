@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "xcode": {
+      "type": "stdio",
+      "command": "/Applications/Xcode.app/Contents/Developer/usr/bin/mcpbridge",
+      "args": [],
+      "env": {
+        "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"
+      }
+    }
+  }
+}

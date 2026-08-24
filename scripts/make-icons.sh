@@ -22,8 +22,8 @@ HTML
     --window-size="$size,$size" --screenshot="$out" "file://$TMP/page.html" 2>/dev/null
 }
 
-render design/icon/listnr-icon.svg 1024 "$TMP/appicon.png"
-render design/icon/listnr-icon-rounded.svg 512 "docs/assets/listnr-icon-512.png"
+render docs/assets/icon/listnr-icon.svg 1024 "$TMP/appicon.png"
+render docs/assets/icon/listnr-icon-rounded.svg 512 "docs/assets/listnr-icon-512.png"
 
 # App icons must ship without an alpha channel.
 cat > "$TMP/flatten.swift" <<'SWIFT'

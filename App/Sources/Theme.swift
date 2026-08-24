@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// The design tokens of mockups/kit.css, translated once. Views never invent
-/// colors or sizes; the three rules live in design/LOCKED.md.
+/// The design tokens of docs/mockups/kit.css, translated once. Views never invent
+/// colors or sizes; the three rules live in docs/DESIGN.md.
+///
+/// Scheme 1 (Black · Purple) only; `data-scheme="2"` never ships.
 enum Theme {
     static let bg = Color(red: 0.02, green: 0.02, blue: 0.02)                 // #050505
     static let raise = Color(red: 0.051, green: 0.051, blue: 0.051)           // #0d0d0d
@@ -27,6 +29,19 @@ enum Theme {
     /// The one horizontal inset.
     static let inset: CGFloat = 20
 
+    /// The cover column (kit.css `--cov`).
+    static let cover: CGFloat = 64
+
+    // spacing scale (kit.css :root)
+    static let s1: CGFloat = 4
+    static let s2: CGFloat = 8
+    static let s3: CGFloat = 12
+    static let s4: CGFloat = 16
+    static let s5: CGFloat = 24
+    static let s6: CGFloat = 32
+    static let s7: CGFloat = 48
+    static let s8: CGFloat = 64
+
     // type ramp
     static let tXS: CGFloat = 12
     static let tSM: CGFloat = 13
@@ -34,35 +49,6 @@ enum Theme {
     static let tLG: CGFloat = 17
     static let tXL: CGFloat = 21
     static let t2XL: CGFloat = 28
-}
-
-/// A placeholder cover: muted tone gradient with the title initial. Sample
-/// libraries ship without real artwork by policy (PRODUCT.md evidence rules).
-struct CoverView: View {
-    let book: Book
-    var cornerRadius: CGFloat = 10
-
-    var body: some View {
-        ZStack(alignment: .center) {
-            LinearGradient(
-                colors: [tone, tone.opacity(0.55)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            Text(String(book.title.prefix(1)))
-                .font(.system(size: 28, weight: .bold, design: .serif))
-                .foregroundColor(Theme.ink2)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Theme.line2, lineWidth: 1)
-        )
-        .accessibilityHidden(true)
-    }
-
-    private var tone: Color {
-        Theme.coverTones[(book.tone - 1 + Theme.coverTones.count) % Theme.coverTones.count]
-    }
 }
 
 /// Time formatting identical to the mockup helpers.
@@ -84,29 +70,5 @@ enum Fmt {
         }
         if m == 0 { return t > 0 ? "<1m" : "0m" }
         return "\(m)m"
-    }
-
-    /// "58s left" / "4m 12s left"
-    static func chapterLeft(_ s: TimeInterval) -> String {
-        let t = Int(max(0, s.rounded()))
-        if t >= 60 { return "\((t % 3600) / 60)m \(String(format: "%02d", t % 60))s left" }
-        return "\(t)s left"
-    }
-}
-
-/// The thin progress grammar shared by every row (kit.css `.line`).
-struct ProgressLine: View {
-    let fraction: Double
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Theme.line2)
-                Capsule().fill(Theme.accentInk)
-                    .frame(width: max(0, min(1, fraction)) * geo.size.width)
-            }
-        }
-        .frame(height: 2)
-        .accessibilityHidden(true)
     }
 }

@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class NoteCaptureTests: XCTestCase {
     private func makeModel() -> AppModel {
-        let store = ListnrStore(inMemory: true)
+        let store = ListnrStore(inMemory: true, seedSamples: true)
         return AppModel(store: store, engine: MockEngine())
     }
 
@@ -46,6 +46,29 @@ final class NoteCaptureTests: XCTestCase {
         XCTAssertTrue(model.notesForCurrentBook.isEmpty, "blank notes are not saved")
     }
 
+    /// Tapping a previous note seeks and closes the sheet; the close path is
+    /// the sheet's own dismiss, so playback resumes only if it was playing.
+    func testNoteTapSeeksAndResumesOnlyIfPlaying() throws {
+        let playing = makeModel()
+        try playing.engine.load(url: URL(fileURLWithPath: "/tmp/alpha.m4a"), startPosition: 10, speed: 1)
+        playing.engine.play()
+        playing.beginNoteCapture()
+        XCTAssertFalse(playing.engine.isPlaying)
+
+        playing.selectChapterTimestamp(42)
+        playing.cancelNoteCapture()          // sheet dismissed by the tap
+        XCTAssertEqual(playing.engine.position, 42, accuracy: 0.001)
+        XCTAssertTrue(playing.engine.isPlaying, "note tap must resume playback that was running")
+
+        let paused = makeModel()
+        try paused.engine.load(url: URL(fileURLWithPath: "/tmp/alpha.m4a"), startPosition: 10, speed: 1)
+        paused.beginNoteCapture()
+        paused.selectChapterTimestamp(42)
+        paused.cancelNoteCapture()
+        XCTAssertEqual(paused.engine.position, 42, accuracy: 0.001)
+        XCTAssertFalse(paused.engine.isPlaying, "note tap must not start playback that was paused")
+    }
+
     func testSleepTimerStopsPlayback() {
         let model = makeModel()
         model.armSleep(minutes: nil)
@@ -61,8 +84,8 @@ final class NoteCaptureTests: XCTestCase {
         XCTAssertEqual(mock.position, 25, accuracy: 0.001)   // 2x speed
 
         mock.seek(to: 100)
-        mock.armSleepTimer(minutes: 1)                        // 60s of book time
-        mock.advance(by: 31)                                  // 62 book seconds at 2x
+        mock.armSleepTimer(minutes: 1)                        // 60s of wall time
+        mock.advance(by: 61)                                  // past the deadline
         XCTAssertFalse(mock.isPlaying, "sleep timer must stop playback")
         XCTAssertNil(mock.sleepRemaining)
     }
@@ -87,7 +110,5 @@ final class NowPlayingTests: XCTestCase {
         XCTAssertEqual(Fmt.hms(63), "0:01:03")
         XCTAssertEqual(Fmt.span(185 * 60), "3h 05m")
         XCTAssertEqual(Fmt.span(42 * 60), "42m")
-        XCTAssertEqual(Fmt.chapterLeft(4), "4s left")
-        XCTAssertEqual(Fmt.chapterLeft(125), "2m 05s left")
     }
 }

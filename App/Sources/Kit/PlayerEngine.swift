@@ -9,8 +9,13 @@ protocol PlayerEngine: AnyObject, ObservableObject {
     var position: TimeInterval { get }
     var duration: TimeInterval { get }
     var speed: Double { get }
-    /// Set when a sleep timer runs; nil when it does not.
+    /// Time left on the sleep timer; nil when none runs. Derived from a
+    /// deadline, never decremented — a decrement drifts and stops counting
+    /// while the app is suspended.
     var sleepRemaining: TimeInterval? { get }
+    /// The choice the timer was armed with, so the picker can show which one
+    /// is active without keeping a second copy of the truth.
+    var sleepArmedMinutes: Int? { get }
     /// Fired on every state change worth repainting from.
     var onChange: (() -> Void)? { get set }
 
@@ -27,15 +32,25 @@ protocol PlayerEngine: AnyObject, ObservableObject {
 }
 
 /// Deterministic engine for previews and tests. Time advances only when
-/// `advance(by:)` is called — no hidden clocks anywhere.
+/// `advance(by:)` is called — no hidden clocks anywhere, including the sleep
+/// timer's, which reads the injectable `now` closure.
 @MainActor
 final class MockEngine: PlayerEngine, ObservableObject {
     private(set) var isPlaying = false
     private(set) var position: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
     private(set) var speed: Double = 1
-    private(set) var sleepRemaining: TimeInterval?
+    private(set) var sleepDeadline: Date?
+    private(set) var sleepArmedMinutes: Int?
     var onChange: (() -> Void)?
+
+    /// The clock the sleep deadline is measured against. `advance(by:)` moves
+    /// it, so tests never wait on wall time.
+    var now: () -> Date = Date.init
+
+    var sleepRemaining: TimeInterval? {
+        sleepDeadline.map { $0.timeIntervalSince(now()) }
+    }
 
     func load(url: URL, startPosition: TimeInterval, speed: Double) throws {
         duration = Self.fixtureDurations[url.lastPathComponent] ?? 600
@@ -61,33 +76,60 @@ final class MockEngine: PlayerEngine, ObservableObject {
     func skipBack(_ interval: TimeInterval) { seek(to: position - interval) }
     func skipForward(_ interval: TimeInterval) { seek(to: position + interval) }
 
+    /// Arming is allowed while paused and never starts playback. Re-arming
+    /// resets the deadline instead of stacking; nil clears it.
     func armSleepTimer(minutes: Int?) {
-        sleepRemaining = minutes.map { Double($0) * 60 }
+        guard let minutes, minutes > 0 else {
+            sleepDeadline = nil
+            sleepArmedMinutes = nil
+            emit()
+            return
+        }
+        sleepDeadline = now().addingTimeInterval(Double(minutes) * 60)
+        sleepArmedMinutes = minutes
         emit()
     }
 
     func stop() {
         isPlaying = false
         position = 0
+        sleepDeadline = nil
+        sleepArmedMinutes = nil
         emit()
     }
 
-    /// Test hook: simulate wall-clock playback.
+    /// Test hook: move the clock, then playback, exactly as wall time would.
+    /// The sleep deadline is wall-clock, so `seconds` is wall seconds and the
+    /// position moves by `seconds * speed`.
     func advance(by seconds: TimeInterval) {
-        guard isPlaying else { return }
-        let step = seconds * speed
-        if let sleep = sleepRemaining {
-            sleepRemaining = sleep - step
-            if sleepRemaining ?? 0 <= 0 {
-                sleepRemaining = nil
-                isPlaying = false
-                emit()
-                return
-            }
+        let target = now().addingTimeInterval(seconds)
+        now = { target }
+
+        // A due deadline stops playback where it stood — it never ducks, and
+        // it fires whether or not the book was playing.
+        if fireSleepIfDue() {
+            emit()
+            return
         }
-        position = min(duration, position + step)
+        guard isPlaying else {
+            emit()
+            return
+        }
+        position = min(duration, position + seconds * speed)
         if position >= duration { isPlaying = false }
         emit()
+    }
+
+    /// True when the timer was due and has just stopped playback.
+    @discardableResult
+    private func fireSleepIfDue() -> Bool {
+        guard let deadline = sleepDeadline, deadline.timeIntervalSince(now()) <= 0 else {
+            return false
+        }
+        sleepDeadline = nil
+        sleepArmedMinutes = nil
+        isPlaying = false
+        return true
     }
 
     private func emit() { onChange?() }
@@ -96,5 +138,8 @@ final class MockEngine: PlayerEngine, ObservableObject {
         "alpha.m4a": 96.0,
         "bravo.m4a": 120.0,
         "charlie.m4a": 72.0,
+        // A ten-hour book, so sleep-timer tests never run out of audio before
+        // the deadline they are testing.
+        "long.m4a": 36_000.0,
     ]
 }

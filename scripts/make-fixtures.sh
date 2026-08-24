@@ -48,4 +48,46 @@ for f in Fixtures/*.wav; do
   rm "$f"
 done
 
+# ---------------------------------------------------------------------------
+# chapters.m4b — the indexer fixture. Carries a title, an artist, a composer
+# (the narrator fallback) and three named chapters of deliberately uneven
+# length, so a test cannot pass against an even split.
+# `afconvert` cannot write chapter metadata; ffmpeg can, via an ffmetadata
+# input. The chapter text track ends up with language "und", which is exactly
+# the case LibraryIndexer's locale fallback exists for.
+# ---------------------------------------------------------------------------
+FFMPEG="${FFMPEG:-/opt/homebrew/bin/ffmpeg}"
+if [[ -x "$FFMPEG" ]]; then
+  meta="$(mktemp -t listnr-ffmeta)"
+  cat > "$meta" <<'META'
+;FFMETADATA1
+title=Der Test Roman
+artist=Testautor
+album=Der Test Roman
+composer=Test Sprecher
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=7000
+title=Prolog
+[CHAPTER]
+TIMEBASE=1/1000
+START=7000
+END=25000
+title=Die Tiefsee
+[CHAPTER]
+TIMEBASE=1/1000
+START=25000
+END=45000
+title=Kontakt
+META
+  "$FFMPEG" -v error -y -f lavfi -i "sine=frequency=300:duration=45:sample_rate=22050" \
+    -ac 1 -i "$meta" -map 0:a -map_metadata 1 -map_chapters 1 \
+    -c:a aac -b:a 48k -movflags +faststart -f mp4 Fixtures/chapters.m4b
+  rm -f "$meta"
+  echo "wrote Fixtures/chapters.m4b"
+else
+  echo "warning: $FFMPEG not found — Fixtures/chapters.m4b left untouched" >&2
+fi
+
 ls -la Fixtures/

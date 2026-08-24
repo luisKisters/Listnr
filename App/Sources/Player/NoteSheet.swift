@@ -9,128 +9,127 @@ struct NoteSheetView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                if let book = model.currentBook {
-                    HStack(spacing: 10) {
-                        CoverView(book: book)
-                            .frame(width: 40, height: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(book.title)
-                                .font(.system(size: Theme.tSM, weight: .semibold))
-                                .lineLimit(1)
-                            Text("at \(Fmt.hms(model.engine.position))")
-                                .font(.system(size: Theme.tXS))
-                                .foregroundColor(Theme.ink3)
-                                .monospacedDigit()
-                        }
-                        Spacer()
-                    }
-                }
-                TextField("Your note", text: $text, axis: .vertical)
-                    .font(.system(size: Theme.tLG))
-                    .focused($focused)
-                    .lineLimit(3...6)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.raise2))
-                    .accessibilityLabel("Note text")
-                Text("Playback resumes when you save.")
-                    .font(.system(size: Theme.tXS))
-                    .foregroundColor(Theme.ink3)
-                let existing = model.notesForCurrentBook
-                if !existing.isEmpty {
-                    Text("Notes for this book")
-                        .font(.system(size: Theme.tXS, weight: .semibold))
-                        .tracking(1.1)
-                        .foregroundColor(Theme.ink3)
-                        .textCase(.uppercase)
-                        .padding(.top, 6)
-                    ForEach(existing) { note in
-                        Button {
-                            model.selectChapterTimestamp(note.timestamp)
-                            dismiss()
-                        } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Text(Fmt.hms(note.timestamp))
-                                    .font(.system(size: Theme.tXS, weight: .semibold))
-                                    .foregroundColor(Theme.accentInk)
-                                    .monospacedDigit()
-                                Text(note.text)
-                                    .font(.system(size: Theme.tSM))
-                                    .foregroundColor(Theme.ink2)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(Theme.ink3)
-                            }
-                            .padding(.vertical, 6)
-                            .contentShape(Rectangle())
-                        }
-                        .accessibilityLabel("Jump to note \(note.text)")
-                    }
-                }
-                Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            head
+            editor
+                .padding(.top, Theme.s4)
+            actions
+                .padding(.top, Theme.s4)
+            if !previous.isEmpty {
+                Rectangle()
+                    .fill(Theme.line2)
+                    .frame(height: 1)
+                    .padding(.top, Theme.s5)
+                previousNotes
+                    .padding(.top, Theme.s5)
             }
-            .padding(Theme.inset)
-            .background(Theme.bg)
-            .navigationTitle("New note")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { // gate-ok: text-labelled toolbar action
-                        model.cancelNoteCapture()
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { // gate-ok: text-labelled toolbar action
-                        model.saveNote(text: text)
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .onAppear { focused = true }
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, Theme.inset)
+        .padding(.top, Theme.s5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Theme.raise)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(20)
         .preferredColorScheme(.dark)
+        .onAppear { focused = true }
     }
-}
 
-/// Notes list for the current book with jump-to-timestamp.
-struct NotesListView: View {
-    let notes: [Note]
-    let onJump: (Note) -> Void
-    let onDelete: (Note) -> Void
+    /// Left: why the clock stands still, and where the note lands.
+    /// Right: the chapter that timestamp falls in.
+    private var head: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.s2) {
+            Image(systemName: "pause.fill")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.ink3)
+            Text(Fmt.hms(model.engine.position))
+                .font(.system(size: Theme.tSM, weight: .semibold))
+                .monospacedDigit()
+                .foregroundColor(Theme.ink)
+            Spacer(minLength: Theme.s3)
+            Text(chapterName)
+                .font(.system(size: Theme.tXS))
+                .foregroundColor(Theme.ink3)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+    }
 
-    var body: some View {
-        List {
-            ForEach(notes) { note in
-                Button {
-                    onJump(note)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(Fmt.hms(note.timestamp))
-                            .font(.system(size: Theme.tXS, weight: .semibold))
-                            .foregroundColor(Theme.accentInk)
-                            .monospacedDigit()
-                        Text(note.text.isEmpty ? "(empty)" : note.text)
-                            .font(.system(size: Theme.tMD))
-                            .foregroundColor(Theme.ink)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                .accessibilityLabel("Note at \(Fmt.hms(note.timestamp)): \(note.text)")
+    /// No box: the caret is the only affordance.
+    private var editor: some View {
+        TextField("Your note", text: $text, axis: .vertical)
+            .font(.system(size: Theme.tMD))
+            .foregroundColor(Theme.ink)
+            .tint(Theme.accentInk)
+            .textFieldStyle(.plain)
+            .focused($focused)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+            .accessibilityLabel("Note text")
+    }
+
+    private var actions: some View {
+        HStack {
+            Button("Cancel") { // gate-ok: text-labelled action
+                model.cancelNoteCapture()
+                dismiss()
             }
-            .onDelete { indexSet in
-                for i in indexSet {
-                    guard i < notes.count else { continue }
-                    onDelete(notes[i])
+            .font(.system(size: Theme.tMD))
+            .foregroundColor(Theme.ink3)
+            Spacer()
+            Button("Save") { // gate-ok: text-labelled action
+                model.saveNote(text: text)
+                dismiss()
+            }
+            .font(.system(size: Theme.tMD, weight: isBlank ? .regular : .semibold))
+            .foregroundColor(isBlank ? Theme.ink3 : Theme.accentInk)
+            .disabled(isBlank)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+    }
+
+    /// Newest first — the store keeps its own ordering by timestamp.
+    private var previousNotes: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(previous) { note in
+                    Button {
+                        model.selectChapterTimestamp(note.timestamp)
+                        dismiss()
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.s3) {
+                            Text(Fmt.hms(note.timestamp))
+                                .font(.system(size: Theme.tXS))
+                                .monospacedDigit()
+                                .foregroundColor(Theme.ink3)
+                                .frame(width: 58, alignment: .leading)
+                            Text(note.text)
+                                .font(.system(size: Theme.tSM))
+                                .foregroundColor(Theme.ink2)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, Theme.s2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Jump to note \(note.text)")
                 }
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(Theme.bg)
+        .scrollIndicators(.hidden)
+    }
+
+    private var previous: [Note] {
+        model.notesForCurrentBook.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private var chapterName: String {
+        model.currentBook?.currentChapter?.title ?? ""
+    }
+
+    private var isBlank: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
