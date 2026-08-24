@@ -4,6 +4,11 @@ import SwiftUI
 /// `.pickerStyle(.wheel)` is the native component). Settling on a row seeks
 /// the engine; the selection haptic fires per detent. There is no public API
 /// for the UIPickerView tick sound, so we do not fake one.
+///
+/// It floats inside the cover's square, over the blurred artwork, and takes
+/// whatever frame the caller gives it. The rows carry their own ink so a
+/// near-white cover underneath cannot wash the titles out; the caller's scrim
+/// does the rest. No `Done` button — the wheel commits when it settles.
 struct ChaptersWheelView: View {
     let book: Book
     let position: TimeInterval
@@ -23,13 +28,16 @@ struct ChaptersWheelView: View {
                     commitWhenSettled(newValue)
                 })) {
                 ForEach(book.chapters) { chapter in
-                    Text(chapter.title).tag(Optional(chapter.id))
+                    Text(chapter.title)
+                        .font(.system(size: Theme.tLG, weight: .medium))
+                        .foregroundStyle(Theme.ink)
+                        .tag(Optional(chapter.id))
                 }
             }
             .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.horizontal, Theme.inset)
+        .padding(.horizontal, Theme.s4)
         .onAppear { selection = currentIndex }
     }
 

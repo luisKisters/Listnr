@@ -29,7 +29,18 @@ Mockup wins over any written rule. These are locked; later iterations must not r
   identity (title, author · narrator); chapter row button; scrubber with three times
   (elapsed / chapter-left / remaining); transport = prev-chapter · back 15 · play · forward 30 · next chapter;
   utility row = Speed · Sleep · Chapters.
-- Chapters toggles the cover's place: cover OR chapters visible, never both (locked trade).
+- Chapters opens **on top of** the cover, not in place of it: the wheel fills the cover's exact box
+  while the artwork stays visible behind it, blurred and scrimmed, and blur + wheel fade in together.
+  Opening or closing chapters therefore moves nothing else on screen.
+  *Changed by the owner on 2026-08-24 after testing on device — this replaces the earlier locked
+  trade "cover OR chapters visible, never both".*
+- The cover is a square **on the rails** — exactly the content inset on both sides, the same span as
+  the scrubber and the transport row — and it takes the vertical room that costs. The fixed margins
+  are already at their floor; the flexible gap gives way first, and only an SE-class frame, where a
+  rail-width square still does not fit, shrinks the cover, and then only by the deficit.
+  *Owner decision, 2026-08-24.*
+- The chapter line carries one quiet chevron (`chevron.down` closed, `chevron.up` open) so it reads
+  as tappable. One glyph, no box and no label word. *Owner decision, 2026-08-24.*
 - Chapter selection uses a **wheel picker** (the iOS time-picker drum), not a scrolling list.
   In SwiftUI this is native: `Picker` with `.pickerStyle(.wheel)`.
 - Cover gets a **darkened treatment**: subtle scrim so light artwork does not glare at night;

@@ -1,10 +1,14 @@
 import SwiftUI
 
 /// Player — decluttered variant A. A fixed column, never a scroll view:
-/// top row · scrimmed cover OR the chapter wheel (never both) · identity with
-/// the chapter line · a flexible gap · scrubber with two times · five transport
-/// keys · the utility row (speed left, note pencil right) · the inline sleep
-/// picker. Nothing here scrolls and nothing touches the tab bar.
+/// top row · the rail-to-rail cover square · identity with the chapter line ·
+/// a flexible gap · scrubber with two times · five transport keys · the
+/// utility row (speed left, note pencil right) · the inline sleep picker.
+/// Nothing here scrolls and nothing touches the tab bar.
+///
+/// The chapter wheel does not replace the cover any more (owner decision,
+/// 2026-08-24, after testing on device): it floats inside the cover's exact
+/// box over the blurred, scrimmed artwork, so opening it moves nothing.
 struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showChapters = false
@@ -21,7 +25,9 @@ struct PlayerView: View {
     private let topRowHeight: CGFloat = 32
     private let transportHeight: CGFloat = 64   // the play key's circle
     private let utilityHeight: CGFloat = 44
-    private let wheelHeight: CGFloat = 216
+    /// How hard the artwork is pushed back while the wheel is up.
+    private let wheelBlur: CGFloat = 18
+    private let wheelScrim: Double = 0.66
 
     var body: some View {
         Group {
@@ -41,51 +47,43 @@ struct PlayerView: View {
             VStack(spacing: 0) {
                 topRow(book).measuredAsFixed()
 
-                if showChapters, !book.chapters.isEmpty {
-                    ChaptersWheelView(
-                        book: book,
-                        position: model.engine.position,
-                        onSelect: { chapter in
-                            model.selectChapter(chapter)
-                            withAnimation(.easeOut(duration: 0.2)) { showChapters = false }
-                        })
-                        .frame(height: wheelHeight)
-                        .padding(.top, Theme.s5)
-                } else {
-                    cover(book, side: coverSide(in: geo.size))
-                        .padding(.top, Theme.s5)
-                }
+                coverBox(book, side: coverSide(in: geo.size))
+                    .padding(.top, Theme.s2)
 
                 identity(book)
-                    .padding(.top, Theme.s6)
+                    .padding(.top, Theme.s5)
                     .measuredAsFixed()
 
-                Spacer(minLength: Theme.s6)
+                Spacer(minLength: Theme.s2)
 
                 VStack(spacing: 0) {
                     scrubber(book)
                     transport
-                    utilities(book).padding(.top, Theme.s6)
+                    utilities(book).padding(.top, Theme.s5)
                     if showSleep { sleepPicker }
                 }
                 .measuredAsFixed()
             }
-            .padding(.bottom, Theme.s5)
+            .padding(.bottom, Theme.s3)
             .onPreferenceChange(FixedHeightKey.self) { fixedHeight = $0 }
         }
     }
 
-    /// The cover is a square on the rails. It only gives ground when a
-    /// rail-to-rail square plus the fixed rows plus the gap at its `Theme.s6`
-    /// minimum would not fit — and then only by what is actually missing.
-    /// Everything but the cover's own margins is measured, so nothing is
-    /// reserved twice.
+    /// The cover is a square **on the rails** — exactly `width - 2·inset`, the
+    /// same span as the scrubber, the identity and the transport row. The
+    /// margins around it are already squeezed to their floor (owner decision,
+    /// 2026-08-24), and the flexible gap gives way first: `kit.css` sets
+    /// `.gap{min-height:0}`, so air goes before the artwork does.
+    ///
+    /// Only on an SE-class frame, where a rail-width square still does not fit,
+    /// does the cover shrink — and then only by the deficit. Everything but the
+    /// cover's own margins is measured, so nothing is reserved twice.
     private func coverSide(in size: CGSize) -> CGFloat {
         let width = size.width - Theme.inset * 2
         guard fixedHeight > 0 else { return width }
-        let margins = Theme.s5      // cover top margin
-            + Theme.s6              // the flexible gap, at its minimum
-            + Theme.s5              // clearance to the tab bar
+        let margins = Theme.s2      // cover top margin
+            + Theme.s2              // the flexible gap, at its floor
+            + Theme.s3              // clearance to the tab bar
         return max(88, min(width, size.height - fixedHeight - margins))
     }
 
@@ -155,10 +153,45 @@ struct PlayerView: View {
         return "\(Int((left / 60).rounded(.up)))m"
     }
 
-    /// The square cover on the inset rails, dimmed by a scrim so light
-    /// artwork never glares (locked decision).
-    private func cover(_ book: Book, side: CGFloat) -> some View {
-        CoverView(book: book, cornerRadius: 12)
+    /// One box, two layers. The cover always holds the square; the wheel is an
+    /// overlay inside the very same frame, so opening chapters cannot shift the
+    /// identity block, the scrubber or the transport by a single point.
+    private func coverBox(_ book: Book, side: CGFloat) -> some View {
+        let open = showChapters && !book.chapters.isEmpty
+        return ZStack {
+            cover(book, side: side, open: open)
+            if open {
+                ChaptersWheelView(
+                    book: book,
+                    position: model.engine.position,
+                    onSelect: { chapter in
+                        model.selectChapter(chapter)
+                        withAnimation(.easeInOut(duration: 0.22)) { showChapters = false }
+                    })
+                    .frame(width: side, height: side)
+                    .transition(.opacity)
+            }
+        }
+        .frame(height: side)
+    }
+
+    /// The square cover on the inset rails, dimmed by a scrim so light artwork
+    /// never glares (locked decision). While the wheel is up it takes a blur
+    /// and a heavier flat scrim on top of that gradient — a near-white cover
+    /// would otherwise swallow the chapter titles.
+    ///
+    /// The blur is applied to an over-scaled copy and then clipped: a plain
+    /// blur samples the transparency outside the square and would ring the
+    /// artwork with a pale halo. `opaque: true` is not the fix — it renders the
+    /// layer black here — the extra scale is.
+    private func cover(_ book: Book, side: CGFloat, open: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return CoverView(book: book, cornerRadius: 12)
+            .frame(width: side, height: side)
+            .scaleEffect(open ? 1.24 : 1)
+            .blur(radius: open ? wheelBlur : 0)
+            .frame(width: side, height: side)
+            .clipShape(shape)
             .overlay {
                 LinearGradient(
                     stops: [
@@ -168,10 +201,14 @@ struct PlayerView: View {
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(shape)
                 .allowsHitTesting(false)
             }
-            .frame(width: side, height: side)
+            .overlay {
+                shape
+                    .fill(Theme.bg.opacity(open ? wheelScrim : 0))
+                    .allowsHitTesting(false)
+            }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, Theme.inset)
             .accessibilityHidden(true)
@@ -207,21 +244,31 @@ struct PlayerView: View {
 
     /// The only control that opens the wheel; it tints while the wheel is up.
     /// Rendered only for a book that has real chapters, so it is never a dead
-    /// control — no chapters means no line at all.
+    /// control — no chapters means no line at all, and no glyph either.
+    ///
+    /// The chevron is the affordance: without it the line read as plain text
+    /// and nobody tried to tap it (owner feedback, 2026-08-24). One quiet
+    /// glyph, no box and no label word — kit.css rule 2.
     private func chapterLine(_ book: Book) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 showChapters.toggle()
                 showSleep = false
             }
         } label: {
-            Text(book.currentChapter?.title ?? "")
-                .font(.system(size: Theme.tSM, weight: .medium))
-                .tracking(-0.01 * Theme.tSM)
-                .lineLimit(1)
-                .foregroundColor(showChapters ? Theme.accentInk : Theme.ink)
-                .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
-                .contentShape(Rectangle())
+            HStack(spacing: Theme.s1 + 2) {
+                Text(book.currentChapter?.title ?? "")
+                    .font(.system(size: Theme.tSM, weight: .medium))
+                    .tracking(-0.01 * Theme.tSM)
+                    .lineLimit(1)
+                    .foregroundColor(showChapters ? Theme.accentInk : Theme.ink)
+                Image(systemName: showChapters ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(showChapters ? Theme.accentInk : Theme.ink3)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
+            .contentShape(Rectangle())
         }
         .padding(.top, Theme.s2)
         .accessibilityLabel("Chapters: \(book.currentChapter?.title ?? "none")")
