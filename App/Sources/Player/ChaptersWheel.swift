@@ -10,6 +10,8 @@ struct ChaptersWheelView: View {
     let onSelect: (Chapter) -> Void
 
     @State private var selection: Chapter.ID?
+    /// Cancelled by every new detent; the survivor is the settled choice.
+    @State private var commit: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +20,7 @@ struct ChaptersWheelView: View {
                 set: { newValue in
                     selection = newValue
                     UISelectionFeedbackGenerator().selectionChanged()
+                    commitWhenSettled(newValue)
                 })) {
                 ForEach(book.chapters) { chapter in
                     Text(chapter.title).tag(Optional(chapter.id))
@@ -27,21 +30,21 @@ struct ChaptersWheelView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, Theme.inset)
-        .overlay(alignment: .bottomTrailing) {
-            Button {
-                if let id = selection ?? currentIndex,
-                   let chapter = book.chapters.first(where: { $0.id == id }) {
-                    onSelect(chapter)
-                }
-            } label: {
-                Text("Done")
-                    .font(.system(size: Theme.tSM, weight: .semibold))
-            }
-            .buttonStyle(.borderedProminent)
-            .padding(14)
-            .accessibilityLabel("Done picking chapters")
-        }
         .onAppear { selection = currentIndex }
+    }
+
+    /// The wheel commits on settle: every detent restarts a short timer and
+    /// only the value the wheel comes to rest on reaches the engine. That is
+    /// why there is no Done button — it would be a second way to do one thing.
+    private func commitWhenSettled(_ id: Chapter.ID?) {
+        commit?.cancel()
+        commit = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled, let id,
+                  let chapter = book.chapters.first(where: { $0.id == id })
+            else { return }
+            onSelect(chapter)
+        }
     }
 
     private var currentIndex: Chapter.ID? {

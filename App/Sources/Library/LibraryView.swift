@@ -27,9 +27,10 @@ struct LibraryView: View {
                 sectionLabel("All books")
                 let list = filteredBooks
                 if list.isEmpty {
-                    Text("Nothing matches this filter.")
+                    Text(emptyLine)
                         .font(.system(size: Theme.tMD))
                         .foregroundColor(Theme.ink3)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, Theme.s4)
                 } else {
                     ForEach(list) { book in
@@ -44,7 +45,15 @@ struct LibraryView: View {
         }
         .background(Theme.bg)
         .scrollBounceBehavior(.basedOnSize)
-        .sheet(isPresented: $importing) { importSheetShell }
+        .sheet(isPresented: $importing) { ImportSheetView() }
+    }
+
+    /// An empty library is the shipped state, not an error: the mockup's own
+    /// line asks for the folder. A filter that matches nothing says so instead.
+    private var emptyLine: String {
+        model.store.books.isEmpty
+            ? "Nothing here yet — tap + and pick the folder your audiobooks live in."
+            : "Nothing matches this filter."
     }
 
     private var filteredBooks: [Book] {
@@ -146,38 +155,6 @@ struct LibraryView: View {
         .accessibilityLabel("\(reading ? "Resume reading" : "Resume listening"): \(book.title)")
     }
 
-    /// Shell for step 5's import sheet: the folder row is inert on purpose, so
-    /// the "+" control always has visible feedback instead of doing nothing.
-    private var importSheetShell: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: Theme.s2) {
-                HStack(spacing: Theme.s3) {
-                    Image(systemName: "folder")
-                    Text("Folder — M4B")
-                        .font(.system(size: Theme.tMD))
-                    Spacer(minLength: 0)
-                }
-                .foregroundColor(Theme.ink3)
-                .frame(height: 44)
-                Text("Importing arrives with the next step.")
-                    .font(.system(size: Theme.tXS))
-                    .foregroundColor(Theme.ink3)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, Theme.inset)
-            .padding(.top, Theme.s4)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.bg)
-            .navigationTitle("Add books")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { importing = false }
-                        .accessibilityLabel("Cancel import")
-                }
-            }
-        }
-    }
 }
 
 /// The big resume row: cover with its band, identity, chapter left / remaining right.
@@ -266,7 +243,7 @@ struct BookRowView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, Theme.s3)
-        .opacity(band == nil ? 0.66 : 1)
+        .opacity(book.isMissing ? 0.5 : (band == nil ? 0.66 : 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(book.title) by \(book.author), \(meta)")
         .accessibilityAddTraits(.isButton)
@@ -276,6 +253,12 @@ struct BookRowView: View {
 
     private var meta: String {
         var parts: [String] = [book.formatWord]
+        // The file is gone from its folder: say so, and the row stops being a
+        // control (plan amendment 7).
+        if book.isMissing {
+            parts.append("missing")
+            return parts.joined(separator: " · ")
+        }
         if book.hasAudio {
             if book.progress <= 0.001 {
                 parts.append(Fmt.span(book.duration))

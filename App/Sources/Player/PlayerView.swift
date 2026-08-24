@@ -192,6 +192,15 @@ struct PlayerView: View {
             if !book.chapters.isEmpty {
                 chapterLine(book)
             }
+            // A file that is not local yet, or a folder whose scope was
+            // refused, says so here instead of failing silently (plan risk 4).
+            if let notice = model.playbackNotice {
+                Text(notice)
+                    .font(.system(size: Theme.tXS))
+                    .foregroundColor(Theme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, Theme.s2)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.inset)

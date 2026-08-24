@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class NoteCaptureTests: XCTestCase {
     private func makeModel() -> AppModel {
-        let store = ListnrStore(inMemory: true)
+        let store = ListnrStore(inMemory: true, seedSamples: true)
         return AppModel(store: store, engine: MockEngine())
     }
 

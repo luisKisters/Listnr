@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import MediaPlayer
+import UIKit
 
 /// The real engine: AVAudioPlayer inside an audio-session-configured app with
 /// lock-screen controls. All mutable state is main-actor bound; the player's
@@ -218,7 +219,7 @@ extension AudioPlayerEngine: AVAudioPlayerDelegate {
 enum NowPlaying {
     static func build(
         title: String, author: String, chapter: String?, position: TimeInterval,
-        duration: TimeInterval, rate: Double
+        duration: TimeInterval, rate: Double, artwork: UIImage? = nil
     ) -> [String: Any] {
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
@@ -229,6 +230,13 @@ enum NowPlaying {
         ]
         if let chapter {
             info[MPMediaItemPropertyAlbumTitle] = chapter
+        }
+        // A book with no embedded art still gets a cover: the typographic
+        // fallback, rendered by the caller. The lock screen is never blank.
+        if let artwork {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artwork.size) { _ in
+                artwork
+            }
         }
         return info
     }

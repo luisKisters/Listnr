@@ -100,6 +100,22 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(waitAbsent(button(app, startingWith: "Piranesi by")))
     }
 
+    /// The "+" opens the real import sheet — the folder row is the only way in,
+    /// and Cancel closes it again. No dead control anywhere on that path.
+    func testImportSheetOpensAndCancels() {
+        let app = launch()
+        let add = app.buttons["Add books"]
+        XCTAssertTrue(add.waitForExistence(timeout: 8), "add control missing")
+        add.tap()
+
+        let folderRow = app.buttons["Pick a folder of M4B files"]
+        XCTAssertTrue(folderRow.waitForExistence(timeout: 6), "folder row missing")
+        XCTAssertTrue(app.staticTexts["Add books"].exists, "sheet head missing")
+
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(waitAbsent(folderRow), "Cancel must close the import sheet")
+    }
+
     // MARK: player
 
     func testOpenBookShowsPlayerAndPlayToggles() {
@@ -126,7 +142,9 @@ final class ListnrUITests: XCTestCase {
         let wheel = app.pickerWheels.firstMatch
         XCTAssertTrue(wheel.waitForExistence(timeout: 6), "chapter wheel missing")
         wheel.adjust(toPickerWheelValue: "Chapter 5")
-        app.buttons["Done picking chapters"].tap()
+        // The wheel commits on settle — there is no Done button to tap.
+        XCTAssertFalse(app.buttons["Done picking chapters"].exists,
+                       "the wheel commits on settle; a Done button would be a second control")
 
         XCTAssertTrue(
             button(app, startingWith: "Chapters: Chapter 5").waitForExistence(timeout: 6),

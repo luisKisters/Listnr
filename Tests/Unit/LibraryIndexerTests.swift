@@ -126,7 +126,7 @@ final class LibraryIndexerTests: XCTestCase {
         let folder = UUID()
         let book = Book(
             id: id, title: "Old", author: "Old Author", formats: [.audio],
-            duration: 100, position: 42.5, speed: 1.75, tone: 3,
+            duration: 100, position: 42.5, speed: 1.75,
             chapters: [Chapter(id: 0, title: "Old One", start: 0, duration: 100)],
             sourceFolderID: folder, relativePath: "old.m4b", isMissing: true)
 
@@ -141,7 +141,6 @@ final class LibraryIndexerTests: XCTestCase {
         XCTAssertEqual(merged.position, 42.5)
         XCTAssertEqual(merged.speed, 1.75)
         XCTAssertEqual(merged.id, id)
-        XCTAssertEqual(merged.tone, 3)
         XCTAssertEqual(merged.title, "New")
         XCTAssertEqual(merged.narrator, "Reader")
         XCTAssertEqual(merged.duration, 300)

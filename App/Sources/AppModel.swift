@@ -1,6 +1,7 @@
 import Foundation
 import MediaPlayer
 import SwiftUI
+import UIKit
 
 /// App-level glue: tab routing, the active engine, note capture with its
 /// pause/resume policy, and now-playing updates.
@@ -17,8 +18,30 @@ final class AppModel: ObservableObject {
     @Published private(set) var currentBookID: UUID?
     /// Set while the note sheet is open; drives the auto-pause policy.
     @Published var noteCaptureActive = false
+    /// A visible reason the current book is not playable — an iCloud file that
+    /// is still downloading, or a folder whose scope was refused. Never silent.
+    @Published private(set) var playbackNotice: String?
+    /// True while a folder scan runs; the library shows it as a quiet line.
+    @Published private(set) var isScanning = false
 
     private var resumeAfterNote = false
+
+    /// The security scope of the folder the loaded book lives in. Held for the
+    /// life of the loaded book (plan risk 5), never only for the scan.
+    private var folderAccess: FolderSource.Access?
+    /// Lock-screen artwork of the loaded book, rendered once and kept in
+    /// memory — never written to disk (plan amendment 2).
+    private var artwork: UIImage?
+    private var artworkBookID: UUID?
+
+    let indexer = LibraryIndexer()
+    /// `nonisolated(unsafe)` so `deinit` can hand it back to the notification
+    /// centre: it is written once in `init` and read once in `deinit`.
+    private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
+    private var lastRescanAt: Date?
+    private var rescanTask: Task<Void, Never>?
+    /// Debounce window for the foreground rescan.
+    private let rescanInterval: TimeInterval = 5
 
     /// UI tests and previews can force the deterministic engine.
     static func makeEngine() -> any PlayerEngine {
@@ -47,6 +70,19 @@ final class AppModel: ObservableObject {
         }
 
         self.engine.onChange = { [weak self] in self?.engineChanged() }
+
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.rescanSources() }
+        }
+        rescanSources()
+    }
+
+    deinit {
+        if let foregroundObserver {
+            NotificationCenter.default.removeObserver(foregroundObserver)
+        }
     }
 
     var currentBook: Book? {
@@ -58,6 +94,8 @@ final class AppModel: ObservableObject {
 
     func openBook(_ id: UUID) {
         guard let book = store.books.first(where: { $0.id == id }) else { return }
+        // A missing file has nothing to open — anything else is a dead control.
+        guard !book.isMissing else { return }
         if book.isPaired || book.hasAudio {
             openInPlayer(book)
         } else {
@@ -90,14 +128,62 @@ final class AppModel: ObservableObject {
         tab = .audiobook
     }
 
+    /// Loads a book and holds everything that book needs for its whole life:
+    /// the folder's security scope and its lock-screen artwork.
     private func loadCurrentBook(into target: (any PlayerEngine)?) {
-        guard let book = currentBook, book.hasAudio, let url = book.audioURL else { return }
+        releaseFolderAccess()
+        playbackNotice = nil
+        artwork = nil
+        artworkBookID = nil
+        guard let book = currentBook, book.hasAudio, !book.isMissing,
+              let url = book.audioURL else { return }
+
+        if let folderID = book.sourceFolderID, let folder = store.folder(id: folderID) {
+            do {
+                let access = try folder.beginAccess()
+                if let fresh = access.refreshedBookmark {
+                    store.updateBookmark(folderID: folderID, bookmark: fresh)
+                }
+                folderAccess = access
+            } catch {
+                playbackNotice = "This folder needs to be picked again."
+                return
+            }
+        }
+
+        // Plan risk 4: AVAudioPlayer wants the whole file locally.
+        guard Self.ensureLocal(url) else {
+            playbackNotice = "Downloading from iCloud — this book plays once the file is local."
+            releaseFolderAccess()
+            return
+        }
+
         do {
             try target?.load(url: url, startPosition: book.position, speed: book.speed)
             updateNowPlaying(book: book)
         } catch {
+            playbackNotice = "This file could not be opened."
+            releaseFolderAccess()
             NSLog("Listnr: failed to load \(url.lastPathComponent): \(error.localizedDescription)")
         }
+    }
+
+    private func releaseFolderAccess() {
+        folderAccess?.end()
+        folderAccess = nil
+    }
+
+    /// True when the file is on this device. An iCloud file that is not
+    /// downloaded starts downloading and reports false — the caller shows it.
+    nonisolated static func ensureLocal(_ url: URL) -> Bool {
+        let keys: Set<URLResourceKey> = [
+            .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
+        ]
+        guard let values = try? url.resourceValues(forKeys: keys),
+              values.isUbiquitousItem == true else { return true }
+        if values.ubiquitousItemDownloadingStatus == .current { return true }
+        try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+        return false
     }
 
     // MARK: engine state -> store
@@ -122,7 +208,30 @@ final class AppModel: ObservableObject {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = NowPlaying.build(
             title: book.title, author: book.author,
             chapter: book.currentChapter?.title,
-            position: engine.position, duration: engine.duration, rate: engine.isPlaying ? engine.speed : 0)
+            position: engine.position, duration: engine.duration,
+            rate: engine.isPlaying ? engine.speed : 0,
+            artwork: lockScreenArtwork(for: book))
+    }
+
+    /// The lock screen never shows a blank square: embedded artwork when the
+    /// container had some, otherwise the typographic fallback rendered once per
+    /// loaded book and kept in memory.
+    private func lockScreenArtwork(for book: Book) -> UIImage? {
+        if artworkBookID == book.id, let artwork { return artwork }
+        let image = CoverImageStore.image(named: book.coverFileName)
+            ?? Self.renderFallback(title: book.title, author: book.author)
+        artwork = image
+        artworkBookID = book.id
+        return image
+    }
+
+    static func renderFallback(title: String, author: String, side: CGFloat = 600) -> UIImage? {
+        let renderer = ImageRenderer(
+            content: CoverView.Fallback(
+                title: title, author: author, tone: Theme.coverTone(for: title))
+                .frame(width: side, height: side))
+        renderer.scale = 1
+        return renderer.uiImage
     }
 
     // MARK: transport passthroughs used by views
@@ -168,6 +277,119 @@ final class AppModel: ObservableObject {
 
     func armSleep(minutes: Int?) {
         engine.armSleepTimer(minutes: minutes)
+    }
+
+    // MARK: folder import and rescan
+
+    /// One folder read, with everything the commit needs. Nothing is written
+    /// until the user taps "Add to library".
+    struct ImportPreview: Sendable {
+        var folder: FolderSource
+        var found: [IndexedBook]
+        var refs: [StoredBookRef]
+        var skipped: Int
+        var isKnownFolder: Bool
+
+        var reconciliation: Reconciliation {
+            LibraryIndexer.reconcile(existing: refs, found: found)
+        }
+
+        var newCount: Int { reconciliation.added.count }
+    }
+
+    private struct FolderScan: Sendable {
+        var result: ScanResult
+        var refs: [StoredBookRef]
+    }
+
+    /// Walks a folder with its security scope held for the whole read, and
+    /// reports each file name as it goes — there is no honest fraction to show
+    /// before the enumeration ends (plan amendment 3).
+    private func scan(
+        folder: FolderSource, onFile: @MainActor @escaping (String) -> Void
+    ) async throws -> FolderScan {
+        let access = try folder.beginAccess()
+        defer { access.end() }
+        if let fresh = access.refreshedBookmark, store.folder(id: folder.id) != nil {
+            store.updateBookmark(folderID: folder.id, bookmark: fresh)
+        }
+        let refs = store.bookRefs(folderID: folder.id)
+        let known = store.knownIDs(folderID: folder.id)
+
+        var result = ScanResult()
+        for file in LibraryIndexer.audioFiles(in: access.url) {
+            let path = LibraryIndexer.relativePath(of: file, in: access.url)
+            onFile(file.lastPathComponent)
+            do {
+                result.books.append(
+                    try await indexer.index(url: file, relativePath: path, id: known[path]))
+            } catch {
+                result.skipped += 1
+            }
+        }
+        return FolderScan(result: result, refs: refs)
+    }
+
+    /// Reads a freshly picked folder. Writes nothing.
+    func previewImport(
+        url: URL, onFile: @MainActor @escaping (String) -> Void
+    ) async throws -> ImportPreview {
+        let known = store.folder(atPath: url)
+        let target = try known ?? FolderSource.make(from: url)
+        let scanned = try await scan(folder: target, onFile: onFile)
+        return ImportPreview(
+            folder: target, found: scanned.result.books, refs: scanned.refs,
+            skipped: scanned.result.skipped, isKnownFolder: known != nil)
+    }
+
+    /// Commits a preview: the folder is remembered and the rows are written.
+    @discardableResult
+    func commitImport(_ preview: ImportPreview) -> (added: Int, updated: Int) {
+        let folder = store.addFolder(preview.folder)
+        let counts = store.apply(preview.reconciliation, folderID: folder.id)
+        adoptFirstBookIfIdle()
+        return counts
+    }
+
+    /// A folder whose bookmark died gets a new one from a fresh pick; the rows
+    /// keep their notes and positions.
+    func rePick(folderID: UUID, url: URL) throws {
+        let bookmark = try FolderSource.makeBookmark(for: url)
+        store.updateBookmark(folderID: folderID, bookmark: bookmark)
+        rescanSources(force: true)
+    }
+
+    /// Runs on launch and on every foreground, at most once per 5 s. The scan
+    /// itself happens on the indexer actor; only the result touches the store.
+    func rescanSources(force: Bool = false) {
+        guard !store.folders.isEmpty, rescanTask == nil else { return }
+        if !force, let last = lastRescanAt, Date().timeIntervalSince(last) < rescanInterval {
+            return
+        }
+        lastRescanAt = Date()
+        isScanning = true
+        rescanTask = Task { [weak self] in
+            guard let self else { return }
+            for folder in self.store.folders {
+                guard let scanned = try? await self.scan(folder: folder, onFile: { _ in })
+                else { continue }
+                self.store.apply(
+                    LibraryIndexer.reconcile(existing: scanned.refs, found: scanned.result.books),
+                    folderID: folder.id)
+            }
+            self.isScanning = false
+            self.rescanTask = nil
+            self.adoptFirstBookIfIdle()
+        }
+    }
+
+    /// After the first import the library has a book but nothing is loaded.
+    private func adoptFirstBookIfIdle() {
+        guard currentBookID == nil,
+              let first = store.books.first(where: { $0.hasAudio && !$0.isMissing })
+        else { return }
+        currentBookID = first.id
+        loadCurrentBook(into: engine)
     }
 
     // MARK: notes — capture pauses playback; saving or cancelling resumes

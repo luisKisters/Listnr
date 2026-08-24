@@ -22,8 +22,6 @@ struct Book: Identifiable, Hashable, Sendable {
     /// Page state for ebook-only titles (reader arrives post-V0).
     var pageCount: Int
     var page: Int
-    /// Index into the five muted cover tones of the design system.
-    var tone: Int
     /// The real chapters read from the audio container. Empty when the
     /// container declares none — the list is never fabricated.
     var chapters: [Chapter]
@@ -41,7 +39,7 @@ struct Book: Identifiable, Hashable, Sendable {
         id: UUID, title: String, author: String, narrator: String? = nil,
         formats: Set<Format>, audioURL: URL? = nil, duration: TimeInterval = 0,
         position: TimeInterval = 0, speed: Double = 1, pageCount: Int = 0, page: Int = 0,
-        tone: Int = 1, chapters: [Chapter] = [], coverFileName: String? = nil,
+        chapters: [Chapter] = [], coverFileName: String? = nil,
         sourceFolderID: UUID? = nil, relativePath: String? = nil, isMissing: Bool = false
     ) {
         self.id = id
@@ -55,7 +53,6 @@ struct Book: Identifiable, Hashable, Sendable {
         self.speed = speed
         self.pageCount = pageCount
         self.page = page
-        self.tone = tone
         self.chapters = chapters
         self.coverFileName = coverFileName
         self.sourceFolderID = sourceFolderID

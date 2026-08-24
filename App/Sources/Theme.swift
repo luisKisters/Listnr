@@ -51,43 +51,6 @@ enum Theme {
     static let t2XL: CGFloat = 28
 }
 
-/// A placeholder cover: muted tone gradient with the title initial. Sample
-/// libraries ship without real artwork by policy (PRODUCT.md evidence rules).
-struct CoverView: View {
-    let book: Book
-    var cornerRadius: CGFloat = 10
-    /// Variant B: when set, a progress band rides inside the cover's bottom
-    /// edge. `nil` for an unstarted book and for screens that do not want it.
-    var progress: Double?
-
-    var body: some View {
-        ZStack(alignment: .center) {
-            LinearGradient(
-                colors: [tone, tone.opacity(0.55)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            Text(String(book.title.prefix(1)))
-                .font(.system(size: 28, weight: .bold, design: .serif))
-                .foregroundColor(Theme.ink2)
-        }
-        .overlay(alignment: .bottom) {
-            if let progress {
-                CoverProgressBand(fraction: progress)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Theme.line2, lineWidth: 1)
-        )
-        .accessibilityHidden(true)
-    }
-
-    private var tone: Color {
-        Theme.coverTones[(book.tone - 1 + Theme.coverTones.count) % Theme.coverTones.count]
-    }
-}
-
 /// Time formatting identical to the mockup helpers.
 enum Fmt {
     /// 1:23:45
@@ -107,28 +70,5 @@ enum Fmt {
         }
         if m == 0 { return t > 0 ? "<1m" : "0m" }
         return "\(m)m"
-    }
-}
-
-/// kit.css `.cover .inline-p` — the band that rides inside the cover's own
-/// bottom edge: a hairline, a dark plate, and the accent filled from the left.
-/// It is always clipped by the cover's corner radius, so it cannot escape.
-struct CoverProgressBand: View {
-    let fraction: Double
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Theme.ink3.frame(height: 1)
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Color.black.opacity(0.62)
-                    Theme.accent
-                        .frame(width: max(0, min(1, fraction)) * geo.size.width)
-                }
-            }
-            .frame(height: 4)
-        }
-        .frame(height: 5)
-        .accessibilityHidden(true)
     }
 }
