@@ -195,6 +195,12 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].waitForExistence(timeout: 4))
         XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].isSelected,
                       "tapping the accessory body must select the Audiobook tab")
+
+        // On the Audiobook tab the accessory must be gone entirely, not merely
+        // emptied: an accessory with empty content still draws its glass
+        // capsule, which reads as a blank bar above the tab bar.
+        XCTAssertTrue(waitAbsent(accessory),
+                      "the accessory must not exist on the Audiobook tab")
     }
 
     // MARK: notes

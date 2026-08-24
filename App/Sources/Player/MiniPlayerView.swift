@@ -4,10 +4,11 @@ import SwiftUI
 /// in one line, plus the two keys you reach for without looking. It carries no
 /// scrubber, no speed and no note key — those belong to the player screen.
 ///
-/// It shows itself only when a book is loaded and the Audiobook tab is not the
-/// selected one, so the player is never doubled. The system owns the
-/// collapse/expand transition; the inline placement simply drops the chapter
-/// line and the forward key.
+/// Whether it appears at all is decided by `RootView`, which gates the
+/// accessory itself — emptying the content here would still leave the system
+/// drawing an empty glass capsule. The system owns the collapse/expand
+/// transition; the inline placement simply drops the chapter line and the
+/// forward key.
 struct MiniPlayerView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -20,7 +21,7 @@ struct MiniPlayerView: View {
     private var isInline: Bool { placement == .inline }
 
     var body: some View {
-        if model.tab != .audiobook, let book = model.currentBook, book.hasAudio {
+        if let book = model.currentBook, book.hasAudio {
             row(book)
         }
     }

@@ -29,16 +29,26 @@ struct RootView: View {
             .tabBarMinimizeBehavior(.onScrollDown)
     }
 
+    /// Whether the accessory should exist at all: only with a loaded audiobook,
+    /// and never on the Audiobook tab, where the player already is.
+    ///
+    /// This has to gate the accessory rather than its content. Returning an
+    /// empty view from the content still leaves the system drawing the glass
+    /// capsule, which reads as an empty bar above the tab bar.
+    private var wantsMiniPlayer: Bool {
+        model.tab != .audiobook && model.currentBook?.hasAudio == true
+    }
+
     /// `tabViewBottomAccessory(isEnabled:)` only arrived in iOS 26.1 and the
     /// deployment target is 26.0, so 26.0 keeps the same rule by attaching the
-    /// accessory only while a book is loaded — never an empty rail.
+    /// accessory only when it is wanted — never an empty rail.
     @ViewBuilder
     private var withMiniPlayer: some View {
         if #available(iOS 26.1, *) {
-            tabs.tabViewBottomAccessory(isEnabled: model.currentBook != nil) {
+            tabs.tabViewBottomAccessory(isEnabled: wantsMiniPlayer) {
                 MiniPlayerView()
             }
-        } else if model.currentBook != nil {
+        } else if wantsMiniPlayer {
             tabs.tabViewBottomAccessory { MiniPlayerView() }
         } else {
             tabs

@@ -10,6 +10,11 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     CODE_SIGN_STYLE: Automatic
     GENERATE_INFOPLIST_FILE: NO
+    # Xcode 26 "Update to recommended settings" — set here so xcodegen emits them
+    # and the modal never blocks the IDE (it also blocks the xcode MCP bridge).
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
 
 targets:
   Listnr:
