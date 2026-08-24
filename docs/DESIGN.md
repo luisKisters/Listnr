@@ -34,12 +34,14 @@ The mockups in `docs/mockups/` are the visual authority. This file states the ru
 Groups top to bottom, s5/s6 gaps between them:
 1. Top row: back chevron, "AUDIOBOOK", moon (sleep) on the right rail with remaining time as quiet text.
 2. Square cover on the rails, subtle dark scrim so light art does not glare.
-3. Identity: title / author · narrator / chapter line. The chapter line is the only thing that opens Chapters.
+3. Identity: title / author · narrator / chapter line. The chapter line is the only thing that opens Chapters, and carries a quiet chevron (down closed, up open) so it reads as tappable — one glyph, no box, no label word.
 4. Scrubber with two times: elapsed left, remaining right.
 5. Transport: prev chapter · back 15 · play (dominant) · forward 30 · next chapter.
 6. Utility row: speed "1.0×" on the left rail, note pencil + quiet count on the right rail. No word labels.
 
-- Chapters = wheel picker (`Picker` with `.pickerStyle(.wheel)`) shown in the cover's box: cover or wheel, never both. Tick feedback = `UISelectionFeedbackGenerator`.
+- Chapters = wheel picker (`Picker` with `.pickerStyle(.wheel)`) shown in the cover's box, floating **over** the artwork, which stays visible behind it blurred and scrimmed. Blur and wheel fade in together, and the wheel takes the cover's exact frame, so opening or closing chapters moves nothing else on screen. Tick feedback = `UISelectionFeedbackGenerator`, commit on settle, no Done button.
+  *Owner decision 2026-08-24 after device testing; replaces the earlier "cover or wheel, never both".*
+- The cover takes the full rail width like every other element, and the vertical room that costs. The fixed margins sit at their floor and the flexible gap gives way first; only an SE-class frame, where a rail-width square cannot fit, shrinks the cover, and then only by the deficit.
 - Speed cycles 1.0 → 1.2 → 1.5 → 1.75 → 2.0×. Sleep timer 15 / 30 / 60 / Off and really stops playback.
 - No Listen / Read & Listen segment (post-MVP).
 

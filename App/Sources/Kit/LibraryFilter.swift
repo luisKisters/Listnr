@@ -1,6 +1,6 @@
 import Foundation
 
-/// Library filtering and sorting. Semantics mirror mockups/app.js `Phone.list`.
+/// Library filtering and sorting. Semantics mirror docs/mockups/app.js `Phone.list`.
 enum LibraryFilter: String, CaseIterable, Sendable {
     case all
     case audiobooks

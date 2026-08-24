@@ -32,9 +32,15 @@ final class ListnrUITests: XCTestCase {
         return !element.exists
     }
 
-    /// Taps a filter and gives the diff animation a moment to settle.
+    /// Opens the header filter menu, picks a choice, and gives the diff
+    /// animation a moment to settle.
     private func filter(_ app: XCUIApplication, name: String) {
-        app.buttons["Filter \(name)"].tap()
+        let menu = app.buttons["Filter"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 8), "filter menu missing")
+        menu.tap()
+        let item = app.buttons[name]
+        XCTAssertTrue(item.waitForExistence(timeout: 6), "filter item \(name) missing")
+        item.tap()
         usleep(400_000)
     }
 
@@ -94,6 +100,22 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(waitAbsent(button(app, startingWith: "Piranesi by")))
     }
 
+    /// The "+" opens the real import sheet — the folder row is the only way in,
+    /// and Cancel closes it again. No dead control anywhere on that path.
+    func testImportSheetOpensAndCancels() {
+        let app = launch()
+        let add = app.buttons["Add books"]
+        XCTAssertTrue(add.waitForExistence(timeout: 8), "add control missing")
+        add.tap()
+
+        let folderRow = app.buttons["Pick a folder of M4B files"]
+        XCTAssertTrue(folderRow.waitForExistence(timeout: 6), "folder row missing")
+        XCTAssertTrue(app.staticTexts["Add books"].exists, "sheet head missing")
+
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(waitAbsent(folderRow), "Cancel must close the import sheet")
+    }
+
     // MARK: player
 
     func testOpenBookShowsPlayerAndPlayToggles() {
@@ -111,14 +133,18 @@ final class ListnrUITests: XCTestCase {
         let app = launch()
         openPlayer(app)
 
-        let chaptersButton = button(app, startingWith: "Chapters:")
-        XCTAssertTrue(chaptersButton.waitForExistence(timeout: 6), "chapter button missing")
-        chaptersButton.tap()
+        // the chapter line under the identity block is the only control that
+        // opens the wheel now — the separate chapter button is gone
+        let chapterLine = button(app, startingWith: "Chapters:")
+        XCTAssertTrue(chapterLine.waitForExistence(timeout: 6), "chapter line missing")
+        chapterLine.tap()
 
         let wheel = app.pickerWheels.firstMatch
         XCTAssertTrue(wheel.waitForExistence(timeout: 6), "chapter wheel missing")
         wheel.adjust(toPickerWheelValue: "Chapter 5")
-        app.buttons["Done picking chapters"].tap()
+        // The wheel commits on settle — there is no Done button to tap.
+        XCTAssertFalse(app.buttons["Done picking chapters"].exists,
+                       "the wheel commits on settle; a Done button would be a second control")
 
         XCTAssertTrue(
             button(app, startingWith: "Chapters: Chapter 5").waitForExistence(timeout: 6),
@@ -140,6 +166,41 @@ final class ListnrUITests: XCTestCase {
         app.buttons["Sleep in 30 minutes"].tap()
         XCTAssertFalse(app.buttons["Sleep in 15 minutes"].waitForExistence(timeout: 2),
                        "picker should close after choosing")
+    }
+
+    // MARK: mini-player
+
+    func testMiniPlayerOnLibrary() {
+        let app = launch()
+        openPlayer(app)
+
+        // back to Library — the accessory only exists off the Audiobook tab
+        app.tabBars.firstMatch.buttons["Library"].tap()
+
+        let accessory = app.buttons["Now playing: Project Hail Mary"]
+        XCTAssertTrue(accessory.waitForExistence(timeout: 6), "mini-player missing on Library")
+
+        // its play key toggles playback and must not switch tabs
+        let play = app.buttons["Play"]
+        XCTAssertTrue(play.waitForExistence(timeout: 4), "mini-player play key missing")
+        play.tap()
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 4),
+                      "mini-player play key did not flip the label")
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Library"].isSelected,
+                      "the play key must not change tabs")
+        app.buttons["Pause"].tap()
+
+        // the body opens the player
+        accessory.tap()
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.tabBars.firstMatch.buttons["Audiobook"].isSelected,
+                      "tapping the accessory body must select the Audiobook tab")
+
+        // On the Audiobook tab the accessory must be gone entirely, not merely
+        // emptied: an accessory with empty content still draws its glass
+        // capsule, which reads as a blank bar above the tab bar.
+        XCTAssertTrue(waitAbsent(accessory),
+                      "the accessory must not exist on the Audiobook tab")
     }
 
     // MARK: notes

@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import MediaPlayer
+import UIKit
 
 /// The real engine: AVAudioPlayer inside an audio-session-configured app with
 /// lock-screen controls. All mutable state is main-actor bound; the player's
@@ -14,13 +15,36 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
     @Published private(set) var position: TimeInterval = 0
     @Published private(set) var duration: TimeInterval = 0
     @Published private(set) var speed: Double = 1
-    @Published private(set) var sleepRemaining: TimeInterval?
+    /// The sleep timer is a deadline, not a countdown: a decrement drifts and
+    /// stops counting while the app is suspended, a deadline does neither.
+    @Published private(set) var sleepDeadline: Date?
+    @Published private(set) var sleepArmedMinutes: Int?
     var onChange: (() -> Void)?
+
+    var sleepRemaining: TimeInterval? {
+        sleepDeadline.map { $0.timeIntervalSinceNow }
+    }
+
+    /// `nonisolated(unsafe)`: written once in `init`, read once in `deinit`.
+    private nonisolated(unsafe) var activeObserver: (any NSObjectProtocol)?
 
     override init() {
         super.init()
         configureAudioSession()
         registerRemoteCommands()
+        // Coming back from a suspension is the other moment the deadline can
+        // be overdue — the ticker was not running while we were away.
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { _ = self?.fireSleepIfDue() }
+        }
+    }
+
+    deinit {
+        if let activeObserver {
+            NotificationCenter.default.removeObserver(activeObserver)
+        }
     }
 
     // MARK: session + remote
@@ -93,6 +117,8 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
         position = min(max(startPosition, 0), p.duration)
         self.speed = speed
         isPlaying = false
+        // A timer armed before the book loaded keeps running.
+        syncTicker()
         emit()
     }
 
@@ -101,7 +127,7 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
         player?.rate = Float(speed)
         player?.play()
         isPlaying = true
-        startTicker()
+        syncTicker()
         emit()
     }
 
@@ -110,7 +136,7 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
         player?.pause()
         player?.rate = Float(speed)
         isPlaying = false
-        stopTicker()
+        syncTicker()
         emit()
     }
 
@@ -140,13 +166,19 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
         seek(to: position + interval)
     }
 
+    /// Arming while paused is allowed and does not start playback; re-arming
+    /// resets the deadline instead of stacking. nil is "Off".
     func armSleepTimer(minutes: Int?) {
         guard let minutes, minutes > 0 else {
-            sleepRemaining = nil
+            sleepDeadline = nil
+            sleepArmedMinutes = nil
+            syncTicker()
             emit()
             return
         }
-        sleepRemaining = Double(minutes) * 60
+        sleepDeadline = Date().addingTimeInterval(Double(minutes) * 60)
+        sleepArmedMinutes = minutes
+        syncTicker()
         emit()
     }
 
@@ -157,11 +189,22 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
         isPlaying = false
         position = 0
         duration = 0
-        sleepRemaining = nil
+        sleepDeadline = nil
+        sleepArmedMinutes = nil
         emit()
     }
 
     // MARK: ticking
+
+    /// The ticker runs while playing and while a deadline is armed — a timer
+    /// armed on a paused book still has to count down and still has to fire.
+    private func syncTicker() {
+        if isPlaying || sleepDeadline != nil {
+            if ticker == nil { startTicker() }
+        } else {
+            stopTicker()
+        }
+    }
 
     private func startTicker() {
         stopTicker()
@@ -178,21 +221,28 @@ final class AudioPlayerEngine: NSObject, PlayerEngine, ObservableObject {
     }
 
     private func tick() {
-        guard let player else { return }
-        position = player.currentTime
-        if let sleep = sleepRemaining {
-            let step = 0.25 * Double(player.rate)
-            let left = sleep - step
-            if left <= 0 {
-                sleepRemaining = nil
-                player.pause()
-                isPlaying = false
-                stopTicker()
-            } else {
-                sleepRemaining = left
-            }
-        }
+        if let player { position = player.currentTime }
+        if fireSleepIfDue() { return }
         emit()
+    }
+
+    /// Stops playback the moment the deadline passes — it stops, it never
+    /// ducks. `pause()` emits, so the model persists the position and repaints
+    /// the lock screen with a paused book.
+    @discardableResult
+    private func fireSleepIfDue() -> Bool {
+        guard let deadline = sleepDeadline, deadline.timeIntervalSinceNow <= 0 else {
+            return false
+        }
+        sleepDeadline = nil
+        sleepArmedMinutes = nil
+        if isPlaying {
+            pause()
+        } else {
+            syncTicker()
+            emit()
+        }
+        return true
     }
 
     /// Called by the store after state changes worth persisting.
@@ -206,7 +256,7 @@ extension AudioPlayerEngine: AVAudioPlayerDelegate {
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.isPlaying = false
-            self.stopTicker()
+            self.syncTicker()
             self.position = self.duration
             self.emit()
         }
@@ -218,7 +268,7 @@ extension AudioPlayerEngine: AVAudioPlayerDelegate {
 enum NowPlaying {
     static func build(
         title: String, author: String, chapter: String?, position: TimeInterval,
-        duration: TimeInterval, rate: Double
+        duration: TimeInterval, rate: Double, artwork: UIImage? = nil
     ) -> [String: Any] {
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
@@ -229,6 +279,13 @@ enum NowPlaying {
         ]
         if let chapter {
             info[MPMediaItemPropertyAlbumTitle] = chapter
+        }
+        // A book with no embedded art still gets a cover: the typographic
+        // fallback, rendered by the caller. The lock screen is never blank.
+        if let artwork {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artwork.size) { _ in
+                artwork
+            }
         }
         return info
     }
