@@ -12,7 +12,7 @@ ios
 
 ## Stack
 
-Native Swift 6 + SwiftUI, iOS 17+. Confirmed choices in ARCHITECTURE.md: AVFoundation playback, SwiftData storage (CloudKit-ready), Vision OCR, own fuzzy-match module, ZIPFoundation + SwiftSoup for EPUB text. No backend for MVP; everything on-device. The mockup.html in this repo is a design artifact only, not the product stack.
+Native Swift 6 + SwiftUI, iOS 17+. Confirmed choices in docs/ARCHITECTURE.md: AVFoundation playback, SwiftData storage (CloudKit-ready), Vision OCR, own fuzzy-match module, ZIPFoundation + SwiftSoup for EPUB text. No backend for MVP; everything on-device. The mockups/ set in this repo is a design artifact only, not the product stack.
 
 ## Users
 
@@ -37,7 +37,21 @@ Whispersync-style position sync without Amazon: works with DRM-free files you ow
 ## Capabilities and Constraints
 
 ### V0 (confirmed 2026-08-21)
-Pure M4B/audiobook player only — nothing else built out, but UI leaves quiet space for later features. Player UI modeled closely on Audible's player (Luis likes it: chapter row, transport lineup, bottom utility row). Personal use on Luis's phone first; maybe a waitlist page later to gauge interest.
+Audiobook player + timestamped notes (notes re-added 2026-08-22 on Luis's request) — nothing else built out, but UI leaves quiet space for later features. Player UI modeled closely on Audible's player (Luis likes it: chapter row, transport lineup, bottom utility row). Personal use on Luis's phone first; maybe a waitlist page later to gauge interest.
+
+### Locked screens (2026-08-22)
+V0 = Player + Notes (pencil on the player's right rail → sheet; opening pauses, Save/Cancel resumes). Library = mockup variant **B** (header filter value + menu, progress band inside cover). Player = mockup variant **A, decluttered** (chapter line inside identity block, two scrubber times, quiet utility row). Source of truth: mockups/library.html, mockups/audiobook.html, docs/DESIGN.md. Scheme: **1 Purple** (#8B5CF6) confirmed 2026-08-22.
+
+### V1 implementation decisions (confirmed 2026-08-22)
+- Min iOS = **26** (first Liquid Glass release); bottom tab bar uses native Liquid Glass `TabView`.
+- Import V1: **M4B only**, via a user-chosen **folder** (security-scoped bookmark, e.g. iCloud Drive/Files): the app indexes every M4B inside automatically and re-scans on launch/foreground. No single-file picker needed beyond that.
+- **Real chapters now**: read from the M4B container (`AVAsset` chapter metadata), no synthetic splits.
+- Sleep timer stays and is fully built (15 / 30 / 60 / Off; stops playback).
+- Notes are V0/V1 (pencil in the player's bottom utility row, right rail).
+- Mini-player bar (iOS 26 `tabViewBottomAccessory`) is in V1: cover, title, play/pause, +30; tap opens the Audiobook tab.
+- Cover fallback: no stock image — a generated typographic cover (muted per-book tone, title + author in SF Pro) wherever the M4B has no artwork.
+- Xcode signed in with the paid Developer team; direct device install via Xcode (no TestFlight needed).
+- Stack stays native SwiftUI (React Native considered and rejected: existing tested base, native audio/lock-screen/Vision needs).
 
 ### App structure (confirmed 2026-08-21)
 Four bottom tabs: **Library · Audiobook · Reader · Scan**.
@@ -92,7 +106,7 @@ Four bottom tabs: **Library · Audiobook · Reader · Scan**.
 
 ## Evidence on Hand
 
-No real book files, covers, or user data in the repo yet. Mockups must use clearly plausible sample books and must not fabricate testimonials, ratings, or store claims. ARCHITECTURE.md and mockup.html exist as design/planning artifacts.
+No real book files, covers, or user data in the repo yet. Mockups must use clearly plausible sample books and must not fabricate testimonials, ratings, or store claims. docs/ARCHITECTURE.md and the mockups/ set exist as design/planning artifacts.
 
 ## Product Principles
 

@@ -7,7 +7,7 @@ Checked before re-proposing anything below.
   We use `UISelectionFeedbackGenerator` instead. Revisit only if Apple exposes the sound.
 - **Automated TestFlight upload tonight** — needs an App Store Connect API key (or app-specific
   password) that is not present in this environment. Documented manual path lives in
-  `docs/testflight.md`. Revisit when a key is added to the environment or CI.
+  `docs/TESTFLIGHT.md`. Revisit when a key is added to the environment or CI.
 - **Real container chapter metadata parsing (M4B chapters)** — deferred: seeded books use
   even-split synthetic chapters with display names, matching the mockup model exactly. Real
   `AVAsset` chapter reading lands with real user files, post-V0.

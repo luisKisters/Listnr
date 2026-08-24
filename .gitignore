@@ -1,4 +1,5 @@
-
-# Xcode per-user state
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
+.DS_Store
+xcuserdata/
+DerivedData/
+.impeccable/review/
+.impeccable/questions/

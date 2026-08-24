@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" data-scheme="1" data-guides="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Listnr — Library</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<header class="pg-head"></header>
+
+<div class="pg-intro">
+  <h1>The library, locked</h1>
+  <p>
+    The filter is <strong>a value beside the title</strong> — tap it and the five choices open in
+    place — so the list starts as high as it can, and progress is
+    <strong>a band inside each cover's own bottom edge</strong>, lifted off the artwork by a hairline.
+  </p>
+  <p>
+    Everything works: the filter filters, search filters as you type, a row opens the player, and the
+    ebook-only title opens the reader, which is under construction and says so. The
+    <strong>+</strong> on the right rail imports from Files: pick an audiobook or an ebook, the file is
+    read, and the metadata it carries is what you confirm before it joins the list. Turn the guides on in
+    the bar below: one inset, one cover column, one tab-bar line.
+  </p>
+</div>
+
+<div class="pg-one">
+  <div class="phone"><div class="ios" id="ph-library"></div></div>
+</div>
+
+<p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
+
+<script src="app.js"></script>
+<script>
+AB.chrome('library.html', 'Library — locked');
+AB.mountOne('ph-library', { tab: 'library' });
+</script>
+</body>
+</html>

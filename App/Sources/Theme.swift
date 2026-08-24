@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The design tokens of mockups/kit.css, translated once. Views never invent
-/// colors or sizes; the three rules live in design/LOCKED.md.
+/// The design tokens of docs/mockups/kit.css, translated once. Views never invent
+/// colors or sizes; the three rules live in docs/DESIGN.md.
 ///
 /// Scheme 1 (Black · Purple) only; `data-scheme="2"` never ships.
 enum Theme {

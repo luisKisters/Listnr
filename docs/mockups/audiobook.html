@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-scheme="1" data-guides="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Listnr — Player</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<header class="pg-head"></header>
+
+<div class="pg-intro">
+  <h1>The player, locked</h1>
+  <p>
+    Artwork on the rails, then <strong>title, author and chapter as one text group</strong>, then the
+    scrubber, the transport and two quiet utilities — five groups with air between them, and the
+    chapter list opens from the chapter line and nowhere else. The pencil sits in the bottom utility row, inside the thumb, and captures a note without leaving the screen.
+  </p>
+  <p>
+    Everything works: play, drag or tap the scrubber, 15 back and 30 forward, the outer keys snap to
+    chapter boundaries, <code>1.0×</code> cycles the speed and the moon in the top row sets a sleep timer that
+    really stops playback — once it is set, the minutes left stand beside it. Chapters takes the artwork’s box as the iOS wheel drum, and the pencil pauses the book, takes the note at that second and gives the playback back.
+  </p>
+</div>
+
+<div class="pg-one">
+  <div class="phone"><div class="ios" id="ph-player"></div></div>
+</div>
+
+<p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
+
+<script src="app.js"></script>
+<script>
+AB.chrome('audiobook.html', 'Player — locked');
+AB.mountOne('ph-player', { tab: 'audiobook' });
+</script>
+</body>
+</html>
