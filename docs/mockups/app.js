@@ -42,6 +42,7 @@
     tabScan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5v-3A1.5 1.5 0 0 1 5.5 4h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3"/><path d="M7.6 12h8.8"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4v-3.2L15.7 5.1a2.26 2.26 0 0 1 3.2 3.2L7.8 19.4z"/><path d="m14.4 6.4 3.2 3.2"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></svg>',
     shoot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.6v-3A1.6 1.6 0 0 1 5.6 4h3M15.4 4h3A1.6 1.6 0 0 1 20 5.6v3M20 15.4v3a1.6 1.6 0 0 1-1.6 1.6h-3M8.6 20h-3A1.6 1.6 0 0 1 4 18.4v-3"/><path d="M8 10.4h8M8 13.6h5.4"/></svg>'
   };
 
@@ -193,11 +194,13 @@
     ['reader', 'Reader', IC.tabRead],
     ['scan', 'Scan', IC.tabScan]
   ];
+  /* iOS 26 Liquid Glass: a floating capsule on the rails, the tab you are on
+     as a filled pill with its icon and label in the accent. */
   function tabbar(st) {
     return '<nav class="tabbar" aria-label="App tabs">' + TABS.map(function (t) {
       return '<button type="button" class="btn btn--key" data-act="tab" data-arg="' + t[0] +
-        '" aria-label="' + t[1] + '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' +
-        '<i class="tabmark" aria-hidden="true"></i>' + t[2] + '</button>';
+        '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' +
+        t[2] + '<span class="tab-l">' + t[1] + '</span></button>';
     }).join('') + '</nav>';
   }
 
@@ -227,6 +230,8 @@
       imp: null,              /* the import sheet: null, or { kind, phase } */
       impTimer: null,
       scan: this.def.scan || 'idle',  /* idle · reading · match · nomatch · preparing */
+      sel: !!this.def.sel,    /* the frame is showing the book list */
+      shot: !!this.def.shot,  /* a scan has been taken in this session */
       scanTimer: null
     };
     this.timer = null;
@@ -379,11 +384,23 @@
   Phone.prototype.scanTo = function (phase) {
     this.scanClear();
     this.st.scan = phase;
+    this.st.sel = false;
     this.paint();
+  };
+  /* the frame's box becomes the book list, and comes back when one is picked.
+     Picking the book that is already there changes nothing, so it must not
+     throw away a transcription that is running for it. */
+  Phone.prototype.scanPick = function (id) {
+    if (!id || id === this.st.book) { this.st.sel = false; return this.paint(); }
+    if (this.st.playing) this.pause();
+    this.st.book = id;
+    this.st.chaps = false; this.st.sleepOpen = false;
+    this.scanTo('idle');
   };
   /* both outcomes have to be walkable, so the shots alternate: the first one
      matches, the next one finds nothing. In the app the text decides. */
   Phone.prototype.shoot = function () {
+    this.st.shot = true;             /* the hint has been read; it goes */
     this.scanTo('reading');
     this.st.shots = (this.st.shots || 0) + 1;
     var out = this.st.shots % 2 ? 'match' : 'nomatch';
@@ -474,9 +491,15 @@
     if (a === 'imp-add') return this.addImport();
     if (a === 'sc-shoot') return this.shoot();
     if (a === 'sc-jump') return this.jump();
-    if (a === 'sc-no') return this.scanTo('idle');
+    /* the close leaves the list first, and only then the state under it */
+    if (a === 'sc-close') {
+      if (st.sel) { st.sel = false; return this.paint(); }
+      return this.scanTo('idle');
+    }
     if (a === 'sc-again') return this.scanTo('idle');
     if (a === 'sc-prep') return this.prepare();
+    if (a === 'sc-sel') { st.sel = !st.sel; return this.paint(); }
+    if (a === 'sc-book') return this.scanPick(arg);
   };
   /* search filters without a repaint, so the caret never jumps */
   Phone.prototype.onInput = function (e) {
@@ -813,7 +836,7 @@
   function libraryScreen(p, st) {
     st.rails = [64];
     var list = p.list();
-    return '<div class="screen">' +
+    return '<div class="screen screen--list">' +
       '<div class="titlerow"><span class="h1">Library</span>' +
         '<span class="titlerow__acts">' +
         '<button type="button" class="btn btn--key btn--wide drop" data-act="menu" aria-expanded="' +
@@ -870,63 +893,113 @@
   }
 
   /* ---- SCAN ---------------------------------------------------------------
-     One screen, five phases. The viewfinder holds its box while you point and
-     while it reads; only a result takes room from it, and then the frame gives
-     way before the text does — the order the player's cover already follows.
+     ONE SKELETON, and the button is the state machine.
 
-       sc-of      what this scan is being matched against
-       sc-view    the camera, inset rail to inset rail
-       gap        the flexible air
-       sc-body    what the phase has to say, or the shutter when it has nothing
-       sc-acts    the confirmation, on the rails                             */
-  function scanFrame(live) {
-    return '<div class="sc-view" data-live="' + (live ? 'true' : 'false') + '" aria-hidden="true">' +
-      '<i class="sc-corner tl"></i><i class="sc-corner tr"></i>' +
-      '<i class="sc-corner bl"></i><i class="sc-corner br"></i></div>';
+       sc-head    the book line: "Point at a page of <title> ⌄", and the close
+                  slot, which is a fixed column whether a close stands in it
+                  or not
+       sc-stage   THE FRAME, one fixed 3:4 box with four brackets. It holds the
+                  viewfinder, the frozen frame, the result, or the book list.
+                  Everything inside it is absolutely placed, so no content can
+                  change its size.
+       sc-foot    the gap, with THE BUTTON centred in it: shutter · spinner ·
+                  "Jump here" · "Prepare this book" · the fraction.
+
+     Nothing here branches on layout. Every state changes contents only.     */
+
+  /* the frame: the brackets are the frame, whatever is inside it */
+  function scanStage(live, inner) {
+    return '<div class="sc-stage" data-live="' + (live ? 'true' : 'false') + '">' +
+      '<i class="sc-corner tl" aria-hidden="true"></i><i class="sc-corner tr" aria-hidden="true"></i>' +
+      '<i class="sc-corner bl" aria-hidden="true"></i><i class="sc-corner br" aria-hidden="true"></i>' +
+      (inner || '') + '</div>';
   }
+  /* the one button, in its one footprint */
+  function scanKey(inner, act, label, off) {
+    return '<div class="sc-foot"><button type="button" class="btn sc-key"' +
+      (act ? ' data-act="' + act + '"' : '') + (off ? ' disabled' : '') +
+      ' aria-label="' + esc(label) + '">' + inner + '</button></div>';
+  }
+  function scanShutter(off, label) {
+    return scanKey('<span class="disc" aria-hidden="true">' + IC.shoot + '</span>',
+      off ? '' : 'sc-shoot', label, off);
+  }
+  function scanRing(pct, label) {
+    var p = pct == null ? '' : ' data-p style="--p:' + pct + '"';
+    return scanKey('<span class="ring"' + p + ' aria-hidden="true">' +
+      (pct == null ? '' : '<span class="p">' + pct + '%</span>') + '</span>', '', label, true);
+  }
+
   function scanScreen(p, st) {
     st.rails = [];
-    var b = p.book(), ph = st.scan, body, acts = '';
+    var b = p.book(), ph = st.scan, ready = b.prep === 1;
+    var live = false, closes = false, inner = '', key;
 
-    /* a book nobody has transcribed cannot be scanned into, and says so */
-    if (ph === 'preparing') {
+    if (st.sel) {
+      /* the image becomes a book selector: same box, one list inside it */
+      closes = true;
+      inner = '<div class="sc-list">' + p.books.filter(hasAudio).map(function (x) {
+        var r = x.prep === 1;
+        return '<button type="button" class="btn sc-book" data-act="sc-book" data-arg="' + x.id +
+          '" data-ready="' + (r ? '1' : '0') + '" aria-current="' + (x.id === b.id ? 'true' : 'false') +
+          '"><span class="n">' + esc(x.title) + '</span>' +
+          '<span class="r">' + (r ? 'ready' : 'not prepared') + '</span></button>';
+      }).join('') + '</div>';
+      key = scanShutter(true, 'Pick a book first');
+
+    } else if (ph === 'preparing') {
+      /* the one honest fraction in the feature: the button counts it out */
       var done = Math.round((b.prep || 0) * 100);
-      body = '<p class="sc-line">Preparing the transcript</p>' +
-        '<span class="sc-bar"><i style="width:' + done + '%"></i></span>' +
-        '<p class="sc-prog">' + done + '% · ' + span(b.dur * (b.prep || 0)) + ' of ' + span(b.dur) + '</p>' +
-        '<p class="sc-sub">This keeps running while you listen.</p>';
-    } else if (b.prep !== 1) {
-      body = '<p class="sc-line">A page can only be matched against a transcript, and this book ' +
-        'has none yet — Listnr has to listen through the audio once first.</p>';
-      acts = '<div class="sc-acts"><span></span>' +
-        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-prep">Prepare this book</button></div>';
+      inner = '<div class="sc-in"><p class="sc-line">Listening through the audio once, so a page has ' +
+        'something to match against.</p>' +
+        '<p class="sc-prog">' + span(b.dur * (b.prep || 0)) + ' of ' + span(b.dur) + '</p>' +
+        '<p class="sc-sub">This keeps running while you listen.</p></div>';
+      key = scanRing(done, 'Preparing this book, ' + done + ' per cent done');
+
+    } else if (!ready) {
+      inner = '<div class="sc-in"><p class="sc-line">A page can only be matched against a transcript, ' +
+        'and this book has none yet.</p>' +
+        '<p class="sc-sub">Preparing runs in the background and takes a while.</p></div>';
+      key = scanKey('Prepare this book', 'sc-prep', 'Prepare this book for scanning');
+
     } else if (ph === 'reading') {
-      body = '<p class="sc-line">Reading the page…</p>';
+      /* the frame freezes; the button, not a line of text, says it is working */
+      key = scanRing(null, 'Reading the page');
+
     } else if (ph === 'match') {
+      closes = true;
       var i = Math.max(0, Math.min(b.chapters - 1, Math.floor(SCAN.at / chapLen(b))));
-      body = '<p class="sc-quote">' + esc(SCAN.text) + '</p>' +
+      inner = '<div class="sc-in"><p class="sc-quote">' + esc(SCAN.text) + '</p>' +
         '<p class="sc-at">' + hms(SCAN.at) + '</p>' +
-        '<p class="sc-ch">' + esc(chapName(b, i)) + '</p>';
-      acts = '<div class="sc-acts">' +
-        '<button type="button" class="btn btn--text btn--off" data-act="sc-no">Not this one</button>' +
-        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-jump">Jump here</button></div>';
+        '<p class="sc-ch">' + esc(chapName(b, i)) + '</p></div>';
+      key = scanKey('Jump here', 'sc-jump', 'Jump to ' + hms(SCAN.at));
+
     } else if (ph === 'nomatch') {
-      body = '<p class="sc-line">No match in this book</p>' +
-        '<p class="sc-sub">Catch a few more lines, or try the facing page.</p>';
-      acts = '<div class="sc-acts"><span></span>' +
-        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-again">Try again</button></div>';
+      inner = '<div class="sc-in"><p class="sc-line">No match in this book.</p>' +
+        '<p class="sc-sub">Catch a few more lines, or try the facing page.</p></div>';
+      key = scanKey('Try again', 'sc-again', 'Try again');
+
     } else {
-      body = '<div class="sc-shoot"><button type="button" class="btn btn--key btn--fill" ' +
-        'data-act="sc-shoot" aria-label="Read the page in front of the camera">' + IC.shoot + '</button></div>' +
-        '<p class="sc-hint">Point at a page</p>';
+      live = true;
+      /* the hint sits over the camera on a slight darkening, and leaves once a
+         scan has been taken — by then it has said everything it can say */
+      inner = st.shot ? '' : '<i class="sc-dim" aria-hidden="true"></i>' +
+        '<p class="sc-hint">Fill the frame with the page</p>';
+      key = scanShutter(false, 'Read the page in front of the camera');
     }
 
-    /* the line only claims a match while there is something to match against */
     return '<div class="screen screen--scan">' +
-      '<div class="sc-of">' + esc(b.prep === 1 ? 'Matching against ' + b.title : b.title) + '</div>' +
-      scanFrame(ph === 'idle' && b.prep === 1) +
-      '<i class="gap"></i>' +
-      '<div class="sc-body">' + body + '</div>' + acts +
+      '<div class="sc-head">' +
+        '<span class="sc-of"><span class="lead">Point at a page of</span>' +
+          '<button type="button" class="btn btn--text sc-pick" data-act="sc-sel" aria-expanded="' +
+            (st.sel ? 'true' : 'false') + '" aria-label="Book to match against: ' + esc(b.title) + '">' +
+            '<span class="t">' + esc(b.title) + '</span>' + IC.caret + '</button></span>' +
+        (closes
+          ? '<button type="button" class="btn btn--key sc-close" data-act="sc-close" ' +
+            'aria-label="Back to the viewfinder">' + IC.close + '</button>'
+          : '') +
+      '</div>' +
+      scanStage(live, inner) + key +
       '</div>';
   }
 
@@ -1096,7 +1169,7 @@
     searchField: searchField, bookRow: bookRow, resumeRow: resumeRow,
     scrubber: scrubber, transport: transport, identity: identity, utilRow: utilRow,
     sleepPicker: sleepPicker, noteSheet: noteSheet, importSheet: importSheet, notes: notes,
-    IMPORTS: IMPORTS, SCAN: SCAN, scanFrame: scanFrame,
+    IMPORTS: IMPORTS, SCAN: SCAN, scanStage: scanStage,
     underConstruction: underConstruction,
     libraryScreen: libraryScreen, playerScreen: playerScreen, scanScreen: scanScreen
   };

@@ -27,6 +27,9 @@ html[data-scheme="1"]{
      is held one notch back in luminance; the two still read as one green. */
   --accent:#2bff3e; --on-accent:#031306; --accent-ink:#5ce46b;
   --cov-1:#151a15; --cov-2:#1d1f1c; --cov-3:#121412; --cov-4:#232522; --cov-5:#1a1c19;
+  /* the tab bar is glass: a translucent film over whatever scrolls behind it,
+     and one step brighter for the pill under the tab you are on */
+  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.11); --glass-line:rgba(255,255,255,.10);
   --scheme-name:"Black · Green";
 }
 /* ---- 2 · BLACK · PURPLE (kept for comparison) ---------------------------- */
@@ -36,6 +39,7 @@ html[data-scheme="2"]{
   --line:rgba(255,255,255,.15); --line-2:rgba(255,255,255,.09);
   --accent:#8b5cf6; --on-accent:#0c0518; --accent-ink:#a78bfa;
   --cov-1:#1c1730; --cov-2:#241f2c; --cov-3:#14131b; --cov-4:#2a2438; --cov-5:#1e1b23;
+  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.11); --glass-line:rgba(255,255,255,.10);
   --scheme-name:"Black · Purple";
 }
 
@@ -56,8 +60,8 @@ html[data-scheme="2"]{
   /* ---- the rails ---- */
   --ins:20px;          /* the one horizontal inset inside every phone   */
   --cov:64px;          /* THE cover column — one width for every row    */
-  --tab-h:50px;        /* tab bar                                       */
-  --home-h:12px;       /* home indicator strip                          */
+  --tab-h:56px;        /* the floating glass tab capsule                */
+  --home-h:22px;       /* the strip it floats above                     */
 
   /* ---- control geometry: dimensions, not spacing ---- */
   --tap:44px;          /* the floor every interactive target stands on  */
@@ -261,21 +265,42 @@ ul,ol{padding:0;list-style:none;}
 
 .screen{
   flex:1;min-height:0;display:flex;flex-direction:column;
-  padding:var(--s7) var(--ins) 0;overflow:hidden;
+  padding:var(--s7) var(--ins) var(--tab-h);overflow:hidden;
 }
+/* a screen whose body scrolls gives the room back to the scroller instead, so
+   the list runs on under the glass the way it does on the device */
+.screen--list{padding-bottom:0;}
+.screen--list .scroll{padding-bottom:calc(var(--tab-h) + var(--s4));}
 
 .scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .scroll::-webkit-scrollbar{width:0;}
 
+/* ---- the tab bar: iOS 26 Liquid Glass -----------------------------------
+   Not a strip across the foot of the screen: a capsule that floats on the same
+   two rails as everything else, translucent and blurred over whatever passes
+   behind it, with the tab you are on as a filled pill in the accent. This is
+   the system's own shape — rule 2 governs what the app draws inside its
+   content, not the platform chrome it sits in. -------------------------- */
 .tabbar{
-  flex:none;display:flex;align-items:stretch;
-  height:var(--tab-h);margin-inline:var(--ins);
-  border-top:1px solid var(--line-2);
+  position:absolute;z-index:4;left:var(--ins);right:var(--ins);bottom:var(--home-h);
+  height:var(--tab-h);display:flex;align-items:stretch;gap:var(--s0);
+  padding:var(--s1);border-radius:calc(var(--tab-h) / 2);
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:inset 0 0 0 1px var(--glass-line),0 10px 28px rgba(0,0,0,.45);
+  transition:background 180ms linear;
 }
-.ios .tabbar .btn{flex:1 1 0;width:auto;height:auto;color:var(--ink-3);}
+.ios .tabbar .btn{
+  flex:1 1 0;width:auto;height:auto;min-height:0;
+  flex-direction:column;justify-content:center;gap:3px;
+  color:var(--ink-3);border-radius:calc((var(--tab-h) - var(--s2)) / 2);
+  transition:color 160ms ease,background 160ms ease;
+}
 .ios .tabbar .btn:hover{color:var(--ink-2);}
-.ios .tabbar .btn[aria-current="true"]{color:var(--accent-ink);}
-.tabbar svg{width:23px;height:23px;display:block;}
+.ios .tabbar .btn[aria-current="true"]{color:var(--accent-ink);background:var(--glass-2);}
+.tabbar svg{width:22px;height:22px;display:block;}
+.tab-l{font-size:11px;line-height:1;letter-spacing:-.01em;}
 .homebar{flex:none;height:var(--home-h);display:flex;align-items:center;justify-content:center;}
 .homebar i{display:block;width:112px;height:4px;border-radius:2px;background:var(--line);}
 
@@ -377,7 +402,7 @@ ul,ol{padding:0;list-style:none;}
      --s5          ──────────────────────── to the tab bar
    ═════════════════════════════════════════════════════════════════════════ */
 
-.screen--player{padding-bottom:var(--s5);}
+.screen--player{padding-bottom:calc(var(--tab-h) + var(--s5));}
 
 .pl-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
   flex:none;color:var(--ink-2);height:32px;}
@@ -581,7 +606,7 @@ ul,ol{padding:0;list-style:none;}
   .gap{flex-basis:var(--s5);min-height:var(--s5);}
   .transport{margin-top:var(--s4);}
   .util{margin-top:var(--s5);}
-  .screen--player{padding-bottom:var(--s4);}
+  .screen--player{padding-bottom:calc(var(--tab-h) + var(--s4));}
 }
 @container (max-height:640px){
   .pl-cover{display:none;}
@@ -589,32 +614,55 @@ ul,ol{padding:0;list-style:none;}
 }
 
 /* ═══ THE SCAN SCREEN ═════════════════════════════════════════════════════
-   One screen, five phases, one box. The viewfinder keeps its box until the
-   screen runs out of room for what the phase has to say, and then gives way
-   before the text does — the same order the player's cover follows. Pointing
-   and reading never move it; only a result, which has earned the room.
+   ONE SKELETON. Three things stand on this screen and none of them moves,
+   resizes or reflows between states — only their contents change:
 
-     sc-of      what the scan is matched against
-     --s5       ────────────────────────────────────
-     sc-view    the camera, inset rail to inset rail
-     gap        the flexible air
-     sc-body    what the phase has to say, or the shutter when it has nothing
-     sc-acts    the one confirmation, on the rails
+     sc-head    44px  the book line, and the close slot on the right rail
+     --s5             ────────────────────────────────────
+     sc-stage   3:4   THE FRAME. Four brackets, one fixed box. It holds the
+                      viewfinder, the frozen frame, the result, or the book
+                      list — never a different shape.
+     sc-foot    rest  the flexible gap, with THE BUTTON centred in it. The
+                      screen's bottom padding is exactly the tab capsule, so
+                      this box runs from the frame's bottom edge to the top of
+                      the glass and `align-items:center` centres the button in
+                      that gap by construction, not by a hand-tuned number.
+
+   THE BUTTON IS THE STATE MACHINE. Shutter, spinner, "Jump here", "Prepare
+   this book", the fraction — one control, one footprint, in every state.
    ═════════════════════════════════════════════════════════════════════════ */
-.screen--scan{padding-bottom:var(--s5);}
+.screen--scan{padding-bottom:var(--tab-h);}
 
-.sc-of{flex:none;height:32px;line-height:32px;font-size:var(--t-sm);color:var(--ink-3);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ---- 1 · the book line -------------------------------------------------- */
+/* the close slot is a fixed grid column, present in every state, so the line
+   beside it can never change width when a close appears */
+.sc-head{flex:none;display:grid;grid-template-columns:minmax(0,1fr) var(--tap);
+  align-items:center;height:var(--tap);}
+.sc-of{min-width:0;display:flex;align-items:center;gap:var(--s1);
+  font-size:var(--t-sm);color:var(--ink-3);white-space:nowrap;}
+.sc-of .lead{flex:none;}
+/* the value-plus-caret of the library's filter, reused verbatim */
+.ios .sc-pick{min-width:0;min-height:0;height:var(--tap);gap:var(--s1);
+  font-size:var(--t-sm);color:var(--ink);}
+.sc-pick .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc-pick svg{width:12px;height:12px;flex:none;transition:transform 160ms ease;}
+.ios .sc-pick[aria-expanded="true"]{color:var(--accent-ink);}
+.sc-pick[aria-expanded="true"] svg{transform:rotate(180deg);}
+.ios .sc-close{justify-self:end;color:var(--ink-3);
+  margin-right:calc((var(--tap) - var(--glyph)) / -2);}
+.ios .sc-close:hover{color:var(--ink);}
+.sc-close svg{width:17px;height:17px;}
 
+/* ---- 2 · the frame ------------------------------------------------------ */
 /* the camera stands in as a dark box with a bracket frame — never a photo,
    because a photo would promise a fidelity the mockup does not have */
-.sc-view{position:relative;flex:0 1 auto;min-height:0;width:100%;aspect-ratio:3/4;
+.sc-stage{position:relative;flex:0 1 auto;min-height:0;width:100%;aspect-ratio:3/4;
   margin-top:var(--s5);border-radius:12px;overflow:hidden;
   background:var(--raise);border:1px solid var(--line-2);
   transition:background 180ms linear,border-color 180ms linear;}
-/* frozen: the frame stops being live and drops back to the ground colour */
-.sc-view[data-live="false"]{background:var(--bg);}
-.sc-view[data-live="false"] .sc-corner{opacity:.4;}
+/* frozen, or standing in for something that is not a camera at all */
+.sc-stage[data-live="false"]{background:var(--bg);}
+.sc-stage[data-live="false"] .sc-corner{opacity:.4;}
 .sc-corner{position:absolute;width:26px;height:26px;border:0 solid var(--line);
   transition:opacity 180ms linear;}
 .sc-corner.tl{top:var(--s4);left:var(--s4);border-top-width:1px;border-left-width:1px;border-top-left-radius:5px;}
@@ -622,47 +670,88 @@ ul,ol{padding:0;list-style:none;}
 .sc-corner.bl{bottom:var(--s4);left:var(--s4);border-bottom-width:1px;border-left-width:1px;border-bottom-left-radius:5px;}
 .sc-corner.br{bottom:var(--s4);right:var(--s4);border-bottom-width:1px;border-right-width:1px;border-bottom-right-radius:5px;}
 
-.sc-body{flex:none;margin-top:var(--s6);}
+/* the hint lives over the camera on a slight darkening, not on a line of its
+   own under the frame, and it leaves once a scan has been taken */
+.sc-dim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(5,5,5,0) 45%,rgba(5,5,5,.62));}
+.sc-hint{position:absolute;left:var(--s5);right:var(--s5);bottom:var(--s5);
+  font-size:var(--t-sm);color:var(--ink-2);text-align:center;}
 
-/* the one key: the same filled disc as the play key, because it is the same
-   kind of act — the single thing this screen is for */
-.sc-shoot{display:flex;align-items:center;justify-content:center;}
-.sc-hint{font-size:var(--t-sm);color:var(--ink-3);text-align:center;margin-top:var(--s3);}
+/* anything the frame has to say instead of a camera. It is absolutely placed
+   inside the box, so no amount of text can change the box. The 46px block
+   padding clears the brackets, which start 16px in and run 26px long. */
+.sc-in{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:46px var(--s5);display:flex;flex-direction:column;justify-content:center;}
+.sc-in::-webkit-scrollbar{width:0;}
 
-/* what the phase says: one plain line, and a quieter one under it */
+/* what a state says: one plain line, and a quieter one under it */
 .sc-line{font-size:var(--t-md);color:var(--ink);line-height:1.45;}
 .sc-sub{font-size:var(--t-sm);color:var(--ink-3);line-height:1.45;margin-top:var(--s2);}
-
 /* the text that was read, quoted back so the guess can be judged */
 .sc-quote{font-size:var(--t-md);color:var(--ink-2);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
 /* the proposal: the second, then the chapter it falls in */
 .sc-at{font-size:19px;font-weight:700;letter-spacing:-.025em;line-height:1.25;color:var(--ink);
   margin-top:var(--s4);font-variant-numeric:tabular-nums;}
 .sc-ch{font-size:var(--t-sm);color:var(--ink-2);line-height:1.45;margin-top:var(--s1);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-
-/* transcription is the one thing here that knows its own fraction, so it is
-   the one thing that draws one */
-.sc-bar{display:block;position:relative;height:1px;margin-top:var(--s4);
-  background:var(--line-2);overflow:hidden;}
-.sc-bar i{position:absolute;inset:0 auto 0 0;background:var(--accent-ink);
-  transition:width 400ms linear;}
 .sc-prog{font-size:var(--t-sm);color:var(--ink-3);line-height:1.45;margin-top:var(--s2);
   font-variant-numeric:tabular-nums;}
 
-/* refuse left, confirm right — the note and import sheets' own rhythm */
-.sc-acts{display:flex;align-items:center;justify-content:space-between;flex:none;
-  margin-top:var(--s5);}
+/* ---- the book list: the frame's box, become a selector ------------------ */
+.sc-list{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:46px var(--s5);}
+.sc-list::-webkit-scrollbar{width:0;}
+.ios .sc-book{display:flex;width:100%;align-items:baseline;justify-content:space-between;
+  gap:var(--s4);min-height:var(--tap);padding-block:var(--s2);
+  border-bottom:1px solid var(--line-2);color:var(--ink-2);font-size:var(--t-sm);}
+.ios .sc-book:last-child{border-bottom:0;}
+.sc-book .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc-book .r{flex:none;font-size:var(--t-xs);color:var(--ink-3);}
+.ios .sc-book[aria-current="true"]{color:var(--ink);font-weight:600;}
 
-@container (max-height:720px){
-  .sc-view{margin-top:var(--s4);}
-  .sc-body{margin-top:var(--s5);}
-  .sc-acts{margin-top:var(--s4);}
-  .screen--scan{padding-bottom:var(--s4);}
+/* ---- 3 · the button ----------------------------------------------------- */
+/* the gap between the frame and the glass, and the one control centred in it */
+.sc-foot{flex:1 1 auto;min-height:var(--key);display:flex;align-items:center;justify-content:center;}
+.ios .sc-key{width:100%;height:var(--key);min-height:var(--key);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--t-md);font-weight:600;color:var(--accent-ink);}
+.ios .sc-key[disabled]{font-weight:600;}
+/* the shutter: the same filled disc as the play key, because it is the same
+   kind of act — the single thing this screen is for */
+.sc-key .disc{display:flex;align-items:center;justify-content:center;
+  width:var(--key);height:var(--key);border-radius:50%;
+  background:var(--accent);color:var(--on-accent);
+  transition:opacity 120ms cubic-bezier(.22,.61,.36,1),background 180ms linear;}
+.sc-key .disc svg{width:26px;height:26px;display:block;}
+.sc-key[disabled] .disc{opacity:.3;}
+@media (prefers-reduced-motion:no-preference){
+  .ios .sc-key:active .disc{transform:scale(.97);}
 }
-@container (max-height:640px){
-  .sc-view{aspect-ratio:auto;flex:1 1 auto;min-height:96px;}
+/* the same footprint, working. Reading has no fraction and its arc simply
+   turns; preparing has one and the arc is the fraction, with the number in
+   the middle of the disc it is drawn on. */
+.sc-key .ring{position:relative;width:var(--key);height:var(--key);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 0 2px var(--line-2);}
+.sc-key .ring::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg 250deg,var(--accent) 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));
+  animation:sc-spin 1.1s linear infinite;}
+.sc-key .ring[data-p]::after{animation:none;
+  background:conic-gradient(var(--accent) calc(var(--p) * 1%),transparent 0);}
+.sc-key .ring .p{font-size:var(--t-sm);font-weight:600;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;}
+@keyframes sc-spin{to{transform:rotate(360deg);}}
+
+/* a short frame steps the one flexible margin down a notch and lets the frame
+   shrink against its own aspect ratio. Nothing here may give the frame a
+   second flexible box to share the leftover with: the button's place in the
+   gap is a consequence of the frame's height, so exactly one of them may
+   flex. */
+@container (max-height:720px){
+  .sc-stage{margin-top:var(--s4);}
 }
 
 /* under construction */
@@ -846,12 +935,10 @@ html[data-guides="1"] .guides{display:block;}
 .phone[data-c="clear"] .ios .empty-act{display:inline-flex;}
 .phone[data-c="mute"] .empty{display:none;}
 
-/* ---- D · how the tab bar reads ------------------------------------------ */
-.tabbar .tabmark{position:absolute;top:-1px;left:25%;right:25%;height:2px;
-  border-radius:1px;background:var(--accent);opacity:0;}
-.ios .tabbar .btn{position:relative;}
-.phone[data-d="mark"] .tabbar .btn[aria-current="true"] .tabmark{opacity:1;}
-.phone[data-d="noline"] .tabbar{border-top:0;}
+/* ---- D · how the section headers read ----------------------------------- */
+.phone[data-d="plain"] .sect{text-transform:none;letter-spacing:0;
+  font-size:var(--t-sm);font-weight:400;}
+.phone[data-d="none"] .sect{display:none;}
 
 /* ---- E · the play key --------------------------------------------------- */
 .phone[data-e="ring"] .ios .transport .play{
@@ -876,20 +963,22 @@ html[data-guides="1"] .guides{display:block;}
 .phone[data-h="caret"] .pl-ch[aria-expanded="true"] .cv{transform:rotate(180deg);}
 .phone[data-h="lit"] .ios .pl-ch{color:var(--accent-ink);}
 
-/* ---- I · the shutter ---------------------------------------------------- */
-.phone[data-i="ring"] .ios .sc-shoot .btn{
-  background:none;color:var(--accent-ink);box-shadow:inset 0 0 0 2px var(--accent-ink);}
-.phone[data-i="ring"] .ios .sc-shoot .btn:hover{color:var(--accent-ink);}
-.phone[data-i="glyph"] .ios .sc-shoot .btn{background:none;color:var(--accent-ink);}
-.phone[data-i="glyph"] .ios .sc-shoot .btn svg{width:44px;height:44px;}
+/* ---- I · what the button does while it works ---------------------------- */
+.phone[data-i="disc"] .sc-key .ring{background:var(--accent);box-shadow:none;}
+.phone[data-i="disc"] .sc-key .ring::after{
+  background:conic-gradient(from 0deg,transparent 0deg 250deg,var(--on-accent) 360deg);}
+.phone[data-i="disc"] .sc-key .ring[data-p]::after{
+  background:conic-gradient(var(--on-accent) calc(var(--p) * 1%),transparent 0);}
+.phone[data-i="disc"] .sc-key .ring .p{color:var(--on-accent);}
+.phone[data-i="still"] .sc-key .ring{background:var(--accent);opacity:.4;box-shadow:none;}
+.phone[data-i="still"] .sc-key .ring::after{display:none;}
+.phone[data-i="still"] .sc-key .ring .p{color:var(--on-accent);}
 
-/* ---- J · where the two answers sit -------------------------------------- */
-.phone[data-j="right"] .sc-acts{justify-content:flex-end;gap:var(--s5);}
-.phone[data-j="right"] .sc-acts>span:empty{display:none;}
-.phone[data-j="stack"] .sc-acts{flex-direction:column-reverse;align-items:stretch;}
-.phone[data-j="stack"] .ios .sc-acts .btn{justify-content:center;}
+/* ---- J · where the frame puts what it has to say ------------------------ */
+.phone[data-j="top"] .sc-in{justify-content:flex-start;}
+.phone[data-j="bottom"] .sc-in{justify-content:flex-end;}
 
-/* ---- K · the viewfinder frame ------------------------------------------- */
-.phone[data-k="rule"] .sc-corner{display:none;}
-.phone[data-k="rule"] .sc-view{border-color:var(--line);}
-.phone[data-k="bare"] .sc-corner{display:none;}
+/* ---- K · how the book list says a book is ready ------------------------- */
+.phone[data-k="lack"] .sc-book[data-ready="1"] .r{visibility:hidden;}
+.phone[data-k="dim"] .sc-book .r{display:none;}
+.phone[data-k="dim"] .sc-book[data-ready="0"]{color:var(--ink-3);}
