@@ -48,3 +48,10 @@ Groups top to bottom, s5/s6 gaps between them:
 ## Notes
 
 - Pencil opens the note sheet without leaving the player. Opening pauses playback; Save or Cancel resumes if it was playing.
+
+## App icon (mockup concept 8, "open book")
+
+- Two solid pages; the far page at 55 % opacity so the fold reads. Lime #2bff3e on pure black. No text, gradient, or inner shadow.
+- The icon keeps the lime; the app UI keeps the purple accent. This is the one place lime appears.
+- Masters in `docs/assets/icon/`: `listnr-icon.svg` (full bleed, the app icon), `listnr-icon-rounded.svg` (favicon and README), `listnr-mark.svg` (glyph only, `currentColor`).
+- `scripts/make-icons.sh` rasterizes them into the asset catalog and `docs/assets/`. Never hand-edit the PNGs, and do not redraw the mark — the drawing is concept 8 from `docs/mockups/icon.html` unchanged.
