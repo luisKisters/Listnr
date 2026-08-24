@@ -41,7 +41,8 @@
     target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="6.2"/><path d="M12 2.6v3.4M12 18v3.4M2.6 12h3.4M18 12h3.4"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>',
     tabScan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5v-3A1.5 1.5 0 0 1 5.5 4h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3"/><path d="M7.6 12h8.8"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4v-3.2L15.7 5.1a2.26 2.26 0 0 1 3.2 3.2L7.8 19.4z"/><path d="m14.4 6.4 3.2 3.2"/></svg>',
-    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>'
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>',
+    shoot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.6v-3A1.6 1.6 0 0 1 5.6 4h3M15.4 4h3A1.6 1.6 0 0 1 20 5.6v3M20 15.4v3a1.6 1.6 0 0 1-1.6 1.6h-3M8.6 20h-3A1.6 1.6 0 0 1 4 18.4v-3"/><path d="M8 10.4h8M8 13.6h5.4"/></svg>'
   };
 
   /* ── the library ────────────────────────────────────────────────────────── */
@@ -60,6 +61,13 @@
       author: 'Frank Schätzing', narrator: 'Frank Glaubrecht', formats: ['audio'],
       dur: 90000, pos: 5892, speed: 1.2, chapters: 46, word: 'Kapitel',
       names: { 1: 'Prolog', 3: 'Vancouver Island', 4: 'Norwegische See' } },
+
+    /* `prep` is how much of the audio has been transcribed: 1 means a scanned
+       page has something to match against, anything less means it has not. */
+    { id: 'kan', tone: 4, seed: 'kaengururebellion', title: 'Die Känguru-Rebellion',
+      author: 'Marc-Uwe Kling', narrator: 'Marc-Uwe Kling', formats: ['audio'],
+      dur: 13980, pos: 4260, speed: 1, chapters: 66, word: 'Kapitel', prep: 1,
+      names: { 1: 'Prolog', 8: 'Der Anschlag', 31: 'Sein und Haben', 66: 'Epilog' } },
 
     { id: 'tde', tone: 3, seed: 'dawnofall', title: 'The Dawn of Everything',
       author: 'Graeber & Wengrow', narrator: 'Mark Williams', formats: ['audio'],
@@ -91,6 +99,18 @@
       lines: ['Emily St. John Mandel', '272 pages · EPUB'],
       title: 'Sea of Tranquility'
     }
+  };
+
+  /* what one scan of a printed page hands back: the text the OCR read, and the
+     second in the audio the fuzzy match put it at. The chapter is not stored —
+     it is derived from the second, the same way the player derives its own. */
+  var SCAN = {
+    text: '„Das Känguru schiebt sich die letzte Schnitte in den Mund und erklärt mit ' +
+      'vollem Beutel, dass Eigentum Diebstahl sei, meine Schnitte also streng genommen nie ' +
+      'mir gehört habe.“',
+    at: 6480,
+    read: 1400,       /* how long the OCR pass is made to take */
+    step: 0.07        /* transcription gained per background tick */
   };
 
   var SPEEDS = [1, 1.2, 1.5, 1.75, 2];
@@ -191,7 +211,7 @@
     this.books = JSON.parse(JSON.stringify(BOOKS));
     this.st = {
       tab: this.def.tab || 'library',
-      book: 'phm',            /* last listened  */
+      book: this.def.book || 'phm',   /* last listened  */
       reading: 'sot',         /* last read      */
       filter: 'all',
       q: '',
@@ -204,9 +224,13 @@
       noteText: '',
       noteResume: false,      /* it was playing when it opened */
       imp: null,              /* the import sheet: null, or { kind, phase } */
-      impTimer: null
+      impTimer: null,
+      scan: this.def.scan || 'idle',  /* idle · reading · match · nomatch · preparing */
+      scanTimer: null
     };
     this.timer = null;
+    /* a variant can hand a phone a book that was never transcribed */
+    if (this.def.prep != null) this.book(this.st.book).prep = this.def.prep;
     var self = this;
     host.addEventListener('click', function (e) { self.onClick(e); });
     host.addEventListener('input', function (e) { self.onInput(e); });
@@ -343,6 +367,54 @@
     this.closeImport();
   };
 
+  /* ---- scan: point at a page, read it, propose one second ----------------
+     The read has no honest fraction, so it shows none and simply takes the
+     time it takes. Transcription does have one — it knows how far through the
+     audio it is — so that, and only that, counts out loud.                  */
+  Phone.prototype.scanClear = function () {
+    if (this.st.scanTimer) { clearTimeout(this.st.scanTimer); clearInterval(this.st.scanTimer); }
+    this.st.scanTimer = null;
+  };
+  Phone.prototype.scanTo = function (phase) {
+    this.scanClear();
+    this.st.scan = phase;
+    this.paint();
+  };
+  /* both outcomes have to be walkable, so the shots alternate: the first one
+     matches, the next one finds nothing. In the app the text decides. */
+  Phone.prototype.shoot = function () {
+    this.scanTo('reading');
+    this.st.shots = (this.st.shots || 0) + 1;
+    var out = this.st.shots % 2 ? 'match' : 'nomatch';
+    var self = this, quick = false;
+    try { quick = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    this.st.scanTimer = setTimeout(function () {
+      self.st.scanTimer = null;
+      self.scanTo(out);
+    }, quick ? 0 : SCAN.read);
+  };
+  Phone.prototype.jump = function () {
+    this.scanClear();
+    this.st.scan = 'idle';
+    this.st.tab = 'audiobook';
+    this.seek(SCAN.at);
+  };
+  /* transcription runs behind the app, so it keeps counting while you listen */
+  Phone.prototype.prepare = function () {
+    var b = this.book();
+    this.scanClear();
+    this.st.scan = 'preparing';
+    b.prep = b.prep || 0;
+    var self = this;
+    this.st.scanTimer = setInterval(function () {
+      var bk = self.book();
+      bk.prep = Math.min(1, (bk.prep || 0) + SCAN.step);
+      if (bk.prep >= 1) { bk.prep = 1; return self.scanTo('idle'); }
+      self.paint();
+    }, 900);
+    this.paint();
+  };
+
   Phone.prototype.openBook = function (id) {
     var b = this.book(id);
     if (!hasAudio(b)) { this.st.reading = id; this.st.tab = 'reader'; return this.paint(); }
@@ -399,6 +471,11 @@
     if (a === 'imp-pick') return this.pickFile(arg);
     if (a === 'imp-close') return this.closeImport();
     if (a === 'imp-add') return this.addImport();
+    if (a === 'sc-shoot') return this.shoot();
+    if (a === 'sc-jump') return this.jump();
+    if (a === 'sc-no') return this.scanTo('idle');
+    if (a === 'sc-again') return this.scanTo('idle');
+    if (a === 'sc-prep') return this.prepare();
   };
   /* search filters without a repaint, so the caret never jumps */
   Phone.prototype.onInput = function (e) {
@@ -438,7 +515,7 @@
     if (st.tab === 'library') body = libraryScreen(this, st);
     else if (st.tab === 'audiobook') body = playerScreen(this, st);
     else if (st.tab === 'reader') body = underConstruction('The reader is not built yet — it arrives with the paired EPUB.');
-    else body = underConstruction('Scan-to-sync is not built yet — it arrives after notes.');
+    else body = scanScreen(this, st);
 
     this.host.innerHTML =
       '<div class="notch" aria-hidden="true"></div>' +
@@ -783,6 +860,67 @@
       '</div>' + noteSheet(b, st);
   }
 
+  /* ---- SCAN ---------------------------------------------------------------
+     One screen, five phases. The viewfinder holds its box while you point and
+     while it reads; only a result takes room from it, and then the frame gives
+     way before the text does — the order the player's cover already follows.
+
+       sc-of      what this scan is being matched against
+       sc-view    the camera, inset rail to inset rail
+       gap        the flexible air
+       sc-body    what the phase has to say, or the shutter when it has nothing
+       sc-acts    the confirmation, on the rails                             */
+  function scanFrame(live) {
+    return '<div class="sc-view" data-live="' + (live ? 'true' : 'false') + '" aria-hidden="true">' +
+      '<i class="sc-corner tl"></i><i class="sc-corner tr"></i>' +
+      '<i class="sc-corner bl"></i><i class="sc-corner br"></i></div>';
+  }
+  function scanScreen(p, st) {
+    st.rails = [];
+    var b = p.book(), ph = st.scan, body, acts = '';
+
+    /* a book nobody has transcribed cannot be scanned into, and says so */
+    if (ph === 'preparing') {
+      var done = Math.round((b.prep || 0) * 100);
+      body = '<p class="sc-line">Preparing the transcript</p>' +
+        '<span class="sc-bar"><i style="width:' + done + '%"></i></span>' +
+        '<p class="sc-prog">' + done + '% · ' + span(b.dur * (b.prep || 0)) + ' of ' + span(b.dur) + '</p>' +
+        '<p class="sc-sub">This keeps running while you listen.</p>';
+    } else if (b.prep !== 1) {
+      body = '<p class="sc-line">A page can only be matched against a transcript, and this book ' +
+        'has none yet — Listnr has to listen through the audio once first.</p>';
+      acts = '<div class="sc-acts"><span></span>' +
+        '<button type="button" class="sc-go" data-act="sc-prep">Prepare this book</button></div>';
+    } else if (ph === 'reading') {
+      body = '<p class="sc-line">Reading the page…</p>';
+    } else if (ph === 'match') {
+      var i = Math.max(0, Math.min(b.chapters - 1, Math.floor(SCAN.at / chapLen(b))));
+      body = '<p class="sc-quote">' + esc(SCAN.text) + '</p>' +
+        '<p class="sc-at">' + hms(SCAN.at) + '</p>' +
+        '<p class="sc-ch">' + esc(chapName(b, i)) + '</p>';
+      acts = '<div class="sc-acts">' +
+        '<button type="button" class="sc-no" data-act="sc-no">Not this one</button>' +
+        '<button type="button" class="sc-go" data-act="sc-jump">Jump here</button></div>';
+    } else if (ph === 'nomatch') {
+      body = '<p class="sc-line">No match in this book</p>' +
+        '<p class="sc-sub">Catch a few more lines, or try the facing page.</p>';
+      acts = '<div class="sc-acts"><span></span>' +
+        '<button type="button" class="sc-go" data-act="sc-again">Try again</button></div>';
+    } else {
+      body = '<div class="sc-shoot"><button type="button" data-act="sc-shoot" ' +
+        'aria-label="Read the page in front of the camera">' + IC.shoot + '</button></div>' +
+        '<p class="sc-hint">Point at a page</p>';
+    }
+
+    /* the line only claims a match while there is something to match against */
+    return '<div class="screen screen--scan">' +
+      '<div class="sc-of">' + esc(b.prep === 1 ? 'Matching against ' + b.title : b.title) + '</div>' +
+      scanFrame(ph === 'idle' && b.prep === 1) +
+      '<i class="gap"></i>' +
+      '<div class="sc-body">' + body + '</div>' + acts +
+      '</div>';
+  }
+
   /* ═══ PAGE CHROME: nav + scheme bar ═════════════════════════════════════ */
   var PAGES = [
     ['index.html', 'Direction'], ['library.html', 'Library'],
@@ -861,9 +999,9 @@
     searchField: searchField, bookRow: bookRow, resumeRow: resumeRow,
     scrubber: scrubber, transport: transport, identity: identity, utilRow: utilRow,
     sleepPicker: sleepPicker, noteSheet: noteSheet, importSheet: importSheet, notes: notes,
-    IMPORTS: IMPORTS,
+    IMPORTS: IMPORTS, SCAN: SCAN, scanFrame: scanFrame,
     underConstruction: underConstruction,
-    libraryScreen: libraryScreen, playerScreen: playerScreen
+    libraryScreen: libraryScreen, playerScreen: playerScreen, scanScreen: scanScreen
   };
   global.AB = AB;
 })(window);

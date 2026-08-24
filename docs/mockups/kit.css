@@ -528,6 +528,94 @@ ul,ol{padding:0;list-style:none;}
   .wheelbox{aspect-ratio:auto;flex:1 1 auto;min-height:120px;}
 }
 
+/* ═══ THE SCAN SCREEN ═════════════════════════════════════════════════════
+   One screen, five phases, one box. The viewfinder keeps its box until the
+   screen runs out of room for what the phase has to say, and then gives way
+   before the text does — the same order the player's cover follows. Pointing
+   and reading never move it; only a result, which has earned the room.
+
+     sc-of      what the scan is matched against
+     --s5       ────────────────────────────────────
+     sc-view    the camera, inset rail to inset rail
+     gap        the flexible air
+     sc-body    what the phase has to say, or the shutter when it has nothing
+     sc-acts    the one confirmation, on the rails
+   ═════════════════════════════════════════════════════════════════════════ */
+.screen--scan{padding-bottom:var(--s5);}
+
+.sc-of{flex:none;height:32px;line-height:32px;font-size:13px;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* the camera stands in as a dark box with a bracket frame — never a photo,
+   because a photo would promise a fidelity the mockup does not have */
+.sc-view{position:relative;flex:0 1 auto;min-height:0;width:100%;aspect-ratio:3/4;
+  margin-top:var(--s5);border-radius:12px;overflow:hidden;
+  background:var(--raise);border:1px solid var(--line-2);
+  transition:background 180ms linear,border-color 180ms linear;}
+/* frozen: the frame stops being live and drops back to the ground colour */
+.sc-view[data-live="false"]{background:var(--bg);}
+.sc-view[data-live="false"] .sc-corner{opacity:.4;}
+.sc-corner{position:absolute;width:26px;height:26px;border:0 solid var(--line);
+  transition:opacity 180ms linear;}
+.sc-corner.tl{top:var(--s4);left:var(--s4);border-top-width:1px;border-left-width:1px;border-top-left-radius:5px;}
+.sc-corner.tr{top:var(--s4);right:var(--s4);border-top-width:1px;border-right-width:1px;border-top-right-radius:5px;}
+.sc-corner.bl{bottom:var(--s4);left:var(--s4);border-bottom-width:1px;border-left-width:1px;border-bottom-left-radius:5px;}
+.sc-corner.br{bottom:var(--s4);right:var(--s4);border-bottom-width:1px;border-right-width:1px;border-bottom-right-radius:5px;}
+
+.sc-body{flex:none;margin-top:var(--s6);}
+
+/* the one key: the same 64px disc as the play key, because it is the same
+   kind of act — the single thing this screen is for */
+.sc-shoot{display:flex;align-items:center;justify-content:center;}
+.ios .sc-shoot button{width:64px;height:64px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--on-accent);
+  transition:opacity 160ms ease,background 180ms linear;}
+.sc-shoot button:hover{opacity:.88;}
+.sc-shoot svg{width:26px;height:26px;display:block;}
+.sc-hint{font-size:13px;color:var(--ink-3);text-align:center;margin-top:var(--s3);}
+
+/* what the phase says: one plain line, and a quieter one under it */
+.sc-line{font-size:15px;color:var(--ink);line-height:1.45;}
+.sc-sub{font-size:13px;color:var(--ink-3);line-height:1.45;margin-top:var(--s2);}
+
+/* the text that was read, quoted back so the guess can be judged */
+.sc-quote{font-size:14px;color:var(--ink-2);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+/* the proposal: the second, then the chapter it falls in */
+.sc-at{font-size:19px;font-weight:700;letter-spacing:-.025em;line-height:1.25;color:var(--ink);
+  margin-top:var(--s4);font-variant-numeric:tabular-nums;}
+.sc-ch{font-size:13px;color:var(--ink-2);line-height:1.45;margin-top:var(--s1);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* transcription is the one thing here that knows its own fraction, so it is
+   the one thing that draws one */
+.sc-bar{display:block;position:relative;height:1px;margin-top:var(--s4);
+  background:var(--line-2);overflow:hidden;}
+.sc-bar i{position:absolute;inset:0 auto 0 0;background:var(--accent-ink);
+  transition:width 400ms linear;}
+.sc-prog{font-size:13px;color:var(--ink-3);line-height:1.45;margin-top:var(--s2);
+  font-variant-numeric:tabular-nums;}
+
+/* refuse left, confirm right — the note and import sheets' own rhythm */
+.sc-acts{display:flex;align-items:center;justify-content:space-between;flex:none;
+  margin-top:var(--s5);}
+.sc-acts button{min-height:44px;font-size:15px;transition:color 160ms ease,opacity 160ms ease;}
+.ios .sc-no{color:var(--ink-3);}
+.ios .sc-no:hover{color:var(--ink-2);}
+.ios .sc-go{color:var(--accent-ink);font-weight:600;}
+.ios .sc-go:hover{opacity:.82;}
+
+@container (max-height:720px){
+  .sc-view{margin-top:var(--s4);}
+  .sc-body{margin-top:var(--s5);}
+  .sc-acts{margin-top:var(--s4);}
+  .screen--scan{padding-bottom:var(--s4);}
+}
+@container (max-height:640px){
+  .sc-view{aspect-ratio:auto;flex:1 1 auto;min-height:96px;}
+}
+
 /* under construction */
 .uc{flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:60px;}
 .uc p{font-size:15px;color:var(--ink-3);text-align:center;max-width:24ch;line-height:1.5;}
@@ -611,13 +699,17 @@ html[data-guides="1"] .guides{display:block;}
 .ios .book, .ios .now, .tabbar button, .transport button,
 .util button, .menu button, .inline__opts button, .wheel button,
 .ios .note-row, .note-acts button, .ios .imp-row, .imp-acts button,
-.pl-ch, .pl-top button, .drop, .ios .add{
+.pl-ch, .pl-top button, .drop, .ios .add, .sc-acts button{
   transition:opacity 120ms cubic-bezier(.22,.61,.36,1),color 160ms ease;
+}
+.ios .sc-shoot button{
+  transition:opacity 120ms cubic-bezier(.22,.61,.36,1),background 180ms linear;
 }
 .ios .book:active, .ios .now:active, .tabbar button:active, .transport button:active,
 .util button:active, .menu button:active, .inline__opts button:active, .wheel button:active,
 .ios .note-row:active, .note-acts button:not([disabled]):active,
-.ios .imp-row:active, .imp-acts button:active,
+.ios .imp-row:active, .imp-acts button:active, .sc-acts button:active,
+.ios .sc-shoot button:active,
 .pl-ch:active, .pl-top button:active, .drop:active, .ios .add:active{opacity:.7;}
 
 @media (prefers-reduced-motion:no-preference){
