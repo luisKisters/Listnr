@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050505">
 <title>Listnr — Direction</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="kit.css">
 </head>
 <body>
@@ -13,14 +14,17 @@
 <div class="pg-intro">
   <h1>One book, three formats, one position</h1>
   <p>
-    V0 is the audiobook player and nothing else. The four tabs —
+    V0 is the audiobook player and note capture, and nothing else. The four tabs —
     <strong>Library · Audiobook · Reader · Scan</strong> — are all present from day one because the
     shell is the thing being confirmed; the two that are not built say so instead of showing dead
     controls.
   </p>
   <p>
-    Two screens carry four variants each. Everything on every phone is live: filters filter, rows
-    open the player, the player plays. Two colour schemes and an alignment-guide overlay sit in the
+    <strong>Library B is locked:</strong> the filter is a value beside the title and progress is a
+    band inside each cover's bottom edge. <strong>Player A is locked:</strong> artwork on the rails,
+    title, author and chapter as one text group, then scrubber, transport and two quiet utilities —
+    speed and the note key low, the sleep timer up top.
+    Everything on every phone is live. Two colour schemes and an alignment-guide overlay sit in the
     bar at the bottom of every page and follow you between them.
   </p>
 </div>
@@ -28,8 +32,8 @@
 <div class="pg-sect">
   <h2 class="pg-h">Screens</h2>
   <nav class="linklist">
-    <a href="library.html"><b>Library</b><span>Four variants · where the filter lives, what the progress belongs to</span></a>
-    <a href="audiobook.html"><b>Audiobook</b><span>Four variants · cover-top, Audible lineup, full-bleed, card over list</span></a>
+    <a href="library.html"><b>Library</b><span>Locked · filter in the header, progress inside the cover edge</span></a>
+    <a href="audiobook.html"><b>Audiobook</b><span>Locked · artwork on top, controls low, chapters from the chapter line</span></a>
     <a href="reader.html"><b>Reader</b><span>Under construction</span></a>
     <a href="scan.html"><b>Scan</b><span>Under construction</span></a>
   </nav>
@@ -41,11 +45,12 @@
     <li><span class="n">01</span><div>
       <h3>Player V0</h3>
       <p>M4B chapters, background audio, lock-screen controls, speed, sleep timer.</p>
+      <p>Import via Files is V0 too: M4B and MP3 for the audiobook, EPUB for the ebook.</p>
       <p class="k">AVFoundation · MPNowPlayingInfoCenter · SwiftData</p>
     </div></li>
     <li><span class="n">02</span><div>
       <h3>Notes</h3>
-      <p>One tap captures a timestamped note; audio pauses and resumes on save.</p>
+      <p>Part of V0: the pencil on the player captures a timestamped note, and the audio pauses while you write and resumes when you are done.</p>
       <p class="k">SwiftData · App Intents</p>
     </div></li>
     <li><span class="n">03</span><div>
