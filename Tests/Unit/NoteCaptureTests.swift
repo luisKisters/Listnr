@@ -84,8 +84,8 @@ final class NoteCaptureTests: XCTestCase {
         XCTAssertEqual(mock.position, 25, accuracy: 0.001)   // 2x speed
 
         mock.seek(to: 100)
-        mock.armSleepTimer(minutes: 1)                        // 60s of book time
-        mock.advance(by: 31)                                  // 62 book seconds at 2x
+        mock.armSleepTimer(minutes: 1)                        // 60s of wall time
+        mock.advance(by: 61)                                  // past the deadline
         XCTAssertFalse(mock.isPlaying, "sleep timer must stop playback")
         XCTAssertNil(mock.sleepRemaining)
     }

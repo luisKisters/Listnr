@@ -9,7 +9,6 @@ struct PlayerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showChapters = false
     @State private var showSleep = false
-    @State private var sleepMinutes: Int?
     /// The measured height of everything in the column that is not the cover
     /// and not the flexible gap. Measured rather than asserted: a constant that
     /// is one point too big steals a point from the cover, and the cover has to
@@ -348,16 +347,14 @@ struct PlayerView: View {
             HStack(spacing: 6) {
                 ForEach(sleepChoices, id: \.self) { m in
                     Button {
-                        sleepMinutes = m
                         model.armSleep(minutes: m)
                         withAnimation { showSleep = false }
                     } label: {
-                        sleepOption("\(m) min", active: isSleepArmed && sleepMinutes == m)
+                        sleepOption("\(m) min", active: armedMinutes == m)
                     }
                     .accessibilityLabel("Sleep in \(m) minutes")
                 }
                 Button {
-                    sleepMinutes = nil
                     model.armSleep(minutes: nil)
                     withAnimation { showSleep = false }
                 } label: {
@@ -370,7 +367,10 @@ struct PlayerView: View {
         .padding(.horizontal, Theme.inset)
     }
 
-    private var isSleepArmed: Bool { model.engine.sleepRemaining != nil }
+    /// The armed choice comes from the engine — the picker keeps no copy of
+    /// it, so the highlight cannot drift from the timer that is running.
+    private var armedMinutes: Int? { model.engine.sleepArmedMinutes }
+    private var isSleepArmed: Bool { armedMinutes != nil }
 
     private func sleepOption(_ text: String, active: Bool) -> some View {
         Text(text)
