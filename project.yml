@@ -36,7 +36,12 @@ targets:
   ListnrTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [Tests/Unit]
+    sources:
+      - path: Tests/Unit
+      # The indexer tests read a real m4b, so the fixtures ship in the test
+      # bundle too — Bundle(for:) finds them without the host app.
+      - path: Fixtures
+        buildPhase: resources
     dependencies:
       - target: Listnr
     settings:

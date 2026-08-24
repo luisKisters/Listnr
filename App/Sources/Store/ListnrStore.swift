@@ -73,12 +73,35 @@ final class NoteRecord {
     }
 }
 
+/// A folder the user imported, as a row. Every property has a default so
+/// adding this model stays a lightweight migration (plan risk 7).
+@Model
+final class FolderRecord {
+    @Attribute(.unique) var id: UUID = UUID()
+    /// Security-scoped bookmark data; replaced when it goes stale.
+    var bookmark: Data = Data()
+    var displayName: String = ""
+    var addedAt: Date = Date.distantPast
+
+    init(
+        id: UUID = UUID(), bookmark: Data = Data(), displayName: String = "",
+        addedAt: Date = Date()
+    ) {
+        self.id = id
+        self.bookmark = bookmark
+        self.displayName = displayName
+        self.addedAt = addedAt
+    }
+}
+
 /// The app's single source of truth: the library, the notes, and who was
 /// last listened/read. All main-actor; SwiftData context is the main one.
 @MainActor
 final class ListnrStore: ObservableObject {
     @Published private(set) var books: [Book] = []
     @Published private(set) var notes: [UUID: [Note]] = [:]
+    /// The imported folders, oldest first.
+    @Published private(set) var folders: [FolderSource] = []
 
     let inMemory: Bool
     private var container: ModelContainer?
@@ -99,7 +122,7 @@ final class ListnrStore: ObservableObject {
     init(inMemory: Bool = false) {
         self.inMemory = inMemory
         do {
-            let schema = Schema([BookRecord.self, NoteRecord.self])
+            let schema = Schema([BookRecord.self, NoteRecord.self, FolderRecord.self])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
             container = try ModelContainer(for: schema, configurations: [config])
             context = ModelContext(container!)
@@ -134,6 +157,9 @@ final class ListnrStore: ObservableObject {
             map[row.bookID, default: []].append(Self.note(from: row))
         }
         notes = map
+
+        let folderRows = (try? context.fetch(FetchDescriptor<FolderRecord>())) ?? []
+        folders = folderRows.sorted { $0.addedAt < $1.addedAt }.map(Self.folder(from:))
     }
 
     private enum Keys {
@@ -158,6 +184,11 @@ final class ListnrStore: ObservableObject {
             sourceFolderID: r.sourceFolderID, relativePath: r.relativePath,
             isMissing: r.isMissing
         )
+    }
+
+    nonisolated static func folder(from r: FolderRecord) -> FolderSource {
+        FolderSource(
+            id: r.id, bookmark: r.bookmark, displayName: r.displayName, addedAt: r.addedAt)
     }
 
     nonisolated static func note(from r: NoteRecord) -> Note {
@@ -217,6 +248,59 @@ final class ListnrStore: ObservableObject {
                 context.delete(row)
                 try? context.save()
             }
+        }
+    }
+
+    // MARK: folder sources
+
+    /// Adds a folder, or returns the existing one when the same folder is
+    /// picked twice — matched by resolved path, since two picks of one folder
+    /// produce different bookmark bytes.
+    @discardableResult
+    func addFolder(_ folder: FolderSource) -> FolderSource {
+        if let existing = folders.first(where: { Self.samePath($0, folder) }) { return existing }
+        folders.append(folder)
+        if let context {
+            context.insert(FolderRecord(
+                id: folder.id, bookmark: folder.bookmark,
+                displayName: folder.displayName, addedAt: folder.addedAt))
+            try? context.save()
+        }
+        return folder
+    }
+
+    private nonisolated static func samePath(_ a: FolderSource, _ b: FolderSource) -> Bool {
+        guard let lhs = try? a.resolve().url, let rhs = try? b.resolve().url else { return false }
+        return lhs.standardizedFileURL.path == rhs.standardizedFileURL.path
+    }
+
+    func folder(id: UUID) -> FolderSource? {
+        folders.first { $0.id == id }
+    }
+
+    /// Removes the folder itself. The books that came from it stay — their
+    /// notes and positions outlive any import.
+    func removeFolder(id: UUID) {
+        folders.removeAll { $0.id == id }
+        guard let context else { return }
+        let target = id
+        let fetch = FetchDescriptor<FolderRecord>(predicate: #Predicate { $0.id == target })
+        if let row = try? context.fetch(fetch).first {
+            context.delete(row)
+            try? context.save()
+        }
+    }
+
+    /// Persists a bookmark that `FolderSource.resolve()` had to re-mint.
+    func updateBookmark(folderID: UUID, bookmark: Data) {
+        guard let i = folders.firstIndex(where: { $0.id == folderID }) else { return }
+        folders[i].bookmark = bookmark
+        guard let context else { return }
+        let target = folderID
+        let fetch = FetchDescriptor<FolderRecord>(predicate: #Predicate { $0.id == target })
+        if let row = try? context.fetch(fetch).first {
+            row.bookmark = bookmark
+            try? context.save()
         }
     }
 
