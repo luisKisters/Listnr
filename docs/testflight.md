@@ -86,3 +86,8 @@ you tick it.
 - An M4B that is still downloading from iCloud shows a notice instead of playing. This is
   by design: `AVAudioPlayer` needs the whole file locally.
 - The player cover is square and sits inside the rails, not on them. `ideas.md` records why.
+
+**First import of large files can take minutes.** Measured: three real M4Bs totalling 800 MB took
+~20 minutes on their very first scan and 0.1 s on every scan after. The cost is reading the bytes
+off disk for the first time, not parsing — see `ideas.md`. On the phone, files already downloaded
+locally scan fast; a file still coming down from iCloud shows the download notice instead.

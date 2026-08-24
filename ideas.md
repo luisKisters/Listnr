@@ -27,3 +27,10 @@ Checked before re-proposing anything below.
   "Downloading from iCloud — this book plays once the file is local." instead of failing silently.
   Swap the engine to `AVPlayer` (it streams; the `PlayerEngine` protocol exists for exactly that)
   only if that download path turns out to be flaky for the 20-hour files this app is for.
+- **Import speed is disk-bound, not code-bound** — measured 2026-08-24 against the owner's three
+  real M4Bs (228/359/200 MB, 12/66/4 chapters). First scan: 1173 s. Second scan of the same files,
+  page cache warm: **0.1 s**. Every individual `AVAsset` call is instant (`load(.duration)`,
+  `.commonMetadata`, artwork `dataValue`, `loadChapterMetadataGroups` — 0.057 s in total for one
+  file). So the cost is the first read of the bytes off disk, on a volume that is 93 % full, not
+  anything the indexer does. No optimisation is warranted in the indexer. If the first import ever
+  needs to feel faster, the lever is progress reporting per file, not parsing.
