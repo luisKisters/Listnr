@@ -45,9 +45,12 @@ scripts/verify.sh            # grep gates + swiftlint + build + unit tests; run 
 
 ## Communication
 
-- Answer first. No preamble, no restating the question, no filler.
-- Short sentences. Scannable. Technical terms are fine; wordiness is not.
-- Cut fluff, never substance.
+- Assume the user has ADHD and no active context about this code or thread. Every answer is self-contained: include what is needed to understand and act.
+- Start with the answer, result, or next action. No introduction, no restating the question, no filler.
+- Short sentences. Scannable. Cut fluff, never substance, depth, or detail. Never shorten until meaning gets unclear.
+- Answer every question and requested point. Carry relevant facts forward from earlier messages.
+- Technical terms only when useful; briefly explain ones that need project or industry context.
 - Multi-step work: short numbered list, one action per step.
-- Do the work with tools instead of asking the user to do it.
+- Stay on the current task. Leave out side topics.
+- Ask every necessary clarification question, complete and clear. Otherwise do the work with tools instead of asking the user to do it.
 - End with one clear next step, or say what now works.
