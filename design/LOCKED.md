@@ -46,6 +46,16 @@ Mockup wins over any written rule. These are locked; later iterations must not r
 - Alignment rails: content inset both sides; tab bar line at the bottom; guides overlay exists in
   mockups to verify rails.
 
+## App icon — concept 8, "open book"
+
+- Two solid pages; the far page carries 55 % opacity so the fold reads. Lime `#2bff3e` on pure
+  black, no text, no gradient, no inner shadow. The icon keeps the lime; the app UI keeps purple.
+- The drawing is concept 8 from `mockups/icon.html` unchanged. Do not redraw it.
+- Masters live in `design/icon/`: `listnr-icon.svg` (full bleed, the app icon),
+  `listnr-icon-rounded.svg` (favicon and README), `listnr-mark.svg` (glyph only, `currentColor`).
+- `scripts/make-icons.sh` rasterizes them. Never hand-edit the PNGs.
+- The ten concepts stay browsable in `mockups/icon.html`.
+
 ## Capture
 
 - Note capture is reachable from the player without leaving it (player top-row action).
