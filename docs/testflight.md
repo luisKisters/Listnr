@@ -56,3 +56,33 @@ get it immediately after processing. The external beta review is one short form 
 
 The upload needs an App Store Connect API key that does not exist in this environment yet.
 Once `ASC_*` variables are present, the block above can be dropped straight into CI.
+
+## V1 device run
+
+Work through this list once on a real iPhone. Write the date next to each item as
+you tick it.
+
+- [ ] `xcodegen generate`, open `Listnr.xcodeproj`, target Listnr → Signing & Capabilities:
+      automatic signing, team = the paid one. Bundle id stays `com.luisKisters.Listnr`.  Date: ______
+- [ ] iPhone on iOS 26 connected and trusted → Run. The deployment target is iOS 26.0,
+      so a lower phone cannot install the build at all — check the phone's version first.  Date: ______
+- [ ] On the phone: Settings → General → VPN & Device Management → trust the developer
+      certificate.  Date: ______
+- [ ] Two or three real M4B files in an iCloud Drive folder; in the app tap `+`, pick that
+      folder, confirm both appear with real titles, authors, durations and chapter counts.  Date: ______
+- [ ] Play, lock the phone: lock-screen artwork, title, chapter and the ±15/30 controls
+      work. A book with no embedded artwork must still show the typographic cover on the
+      lock screen — that one is rendered through `ImageRenderer`.  Date: ______
+- [ ] Arm a 15-minute sleep timer, lock, confirm playback stops on time.  Date: ______
+- [ ] Take a note mid-playback: it pauses, saves at the right timestamp, resumes.  Date: ______
+- [ ] Force-quit and relaunch: position, folder and notes survive; the rescan adds a newly
+      copied M4B without another picker.  Date: ______
+
+**Rule:** any failing item goes back to its owning step (5, 6 or 7) in
+`docs/plans/2026-08-22-listnr-v1.md`, never into a workaround in this document.
+
+### Known and deliberate
+
+- An M4B that is still downloading from iCloud shows a notice instead of playing. This is
+  by design: `AVAudioPlayer` needs the whole file locally.
+- The player cover is square and sits inside the rails, not on them. `ideas.md` records why.

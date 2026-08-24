@@ -15,17 +15,21 @@ APP=$(ls -dt ~/Library/Developer/Xcode/DerivedData/Listnr-*/Build/Products/Debug
 xcrun simctl install "$DEST_ID" "$APP"
 mkdir -p artifacts
 
-shot_tab() {
-    local tab="$1" file="$2" wait="${3:-3}"
+# shot <file> <tab> [extra launch args...]
+shot() {
+    local file="$1" tab="$2"; shift 2
     xcrun simctl terminate "$DEST_ID" com.luisKisters.Listnr 2>/dev/null || true
-    xcrun simctl launch "$DEST_ID" com.luisKisters.Listnr -uitest -tab "$tab" >/dev/null
-    sleep "$wait"
+    xcrun simctl launch "$DEST_ID" com.luisKisters.Listnr -uitest -tab "$tab" "$@" >/dev/null
+    sleep 3
     xcrun simctl io "$DEST_ID" screenshot "artifacts/$file" >/dev/null
     echo "[evidence] $file"
 }
 
-shot_tab library 01-library.png
-shot_tab audiobook 02-player.png
-shot_tab reader 03-reader-construction.png
-shot_tab scan 04-scan-construction.png
+shot 01-library.png library
+shot 02-player.png audiobook
+shot 03-reader-construction.png reader
+shot 04-scan-construction.png scan
+# the sheets: -sheet opens them on launch (AppModel.init)
+shot 05-import-sheet.png library -sheet import
+shot 06-note-sheet.png audiobook -sheet note
 echo "[evidence] done: $(ls artifacts)"

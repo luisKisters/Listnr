@@ -7,7 +7,6 @@ struct LibraryView: View {
     @EnvironmentObject private var model: AppModel
     @State private var filter: LibraryFilter = .all
     @State private var query = ""
-    @State private var importing = false
 
     var body: some View {
         ScrollView {
@@ -45,7 +44,7 @@ struct LibraryView: View {
         }
         .background(Theme.bg)
         .scrollBounceBehavior(.basedOnSize)
-        .sheet(isPresented: $importing) { ImportSheetView() }
+        .sheet(isPresented: $model.importSheetActive) { ImportSheetView() }
     }
 
     /// An empty library is the shipped state, not an error: the mockup's own
@@ -76,7 +75,7 @@ struct LibraryView: View {
             Spacer(minLength: Theme.s3)
             filterMenu
             Button {
-                importing = true
+                model.importSheetActive = true
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 20))

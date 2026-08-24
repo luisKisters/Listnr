@@ -23,8 +23,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var playbackNotice: String?
     /// True while a folder scan runs; the library shows it as a quiet line.
     @Published private(set) var isScanning = false
+    /// Drives the library's import sheet. On the model, not on the view, so a
+    /// launch argument can open it for the evidence screenshots.
+    @Published var importSheetActive = false
 
     private var resumeAfterNote = false
+    /// Set by `-sheet note`; the capture starts after the engine is wired.
+    private var openNoteOnLaunch = false
 
     /// The security scope of the folder the loaded book lives in. Held for the
     /// life of the loaded book (plan risk 5), never only for the scan.
@@ -68,6 +73,16 @@ final class AppModel: ObservableObject {
            let t = Tab(rawValue: argv[i + 1]) {
             tab = t
         }
+        // deep-launch support: `-sheet import|note` for the evidence shots.
+        // The note sheet goes through the real capture path, pause policy and
+        // all — a shortcut would photograph something the app never shows.
+        if let i = argv.firstIndex(of: "-sheet"), i + 1 < argv.count {
+            switch argv[i + 1] {
+            case "import": importSheetActive = true
+            case "note": openNoteOnLaunch = true
+            default: break
+            }
+        }
 
         self.engine.onChange = { [weak self] in self?.engineChanged() }
 
@@ -77,6 +92,10 @@ final class AppModel: ObservableObject {
             MainActor.assumeIsolated { self?.rescanSources() }
         }
         rescanSources()
+        if openNoteOnLaunch {
+            openNoteOnLaunch = false
+            beginNoteCapture()
+        }
     }
 
     deinit {
