@@ -29,7 +29,8 @@
   </p>
 </div>
 
-<div class="pg-sect">
+<div class="pg-two">
+  <div class="pg-two__main">
   <h2 class="pg-h">The five phases</h2>
   <div class="pg-row">
 
@@ -89,6 +90,8 @@
     </div>
 
   </div>
+  </div>
+  <aside class="pg-two__rail" id="rail-scan"></aside>
 </div>
 
 <p class="colophon">Design mockup · Die Känguru-Rebellion is the test title; sample text and
@@ -103,6 +106,46 @@ AB.mountOne('ph-scan-match',   { tab: 'scan', book: 'kan', scan: 'match' });
 AB.mountOne('ph-scan-nomatch', { tab: 'scan', book: 'kan', scan: 'nomatch' });
 AB.mountOne('ph-scan-unprep',  { tab: 'scan', book: 'kan', prep: 0 });
 AB.mountOne('ph-scan-prep',    { tab: 'scan', book: 'kan', prep: 0.38, scan: 'preparing' });
+
+/* The phase order and the refuse-before-jump rule are settled. What is open is
+   how the shutter reads, where the two answers sit, and what the frame draws.
+   The rail drives all six phones at once, so a choice can be judged in every
+   phase it touches. */
+AB.rail({
+  mount: 'rail-scan',
+  title: 'Scan — what is still open',
+  sub: 'The five phases and the confirm-before-jump rule are settled. Every choice here applies to all six phones at once.',
+  axes: [
+    { id: 'i', label: 'The shutter', options: [
+      { v: 'fill',  t: 'Filled accent disc',
+        d: 'the same key as play, because it is the same kind of act — a bright disc over a dark viewfinder' },
+      { v: 'ring',  t: 'Accent ring',
+        d: 'reads as a camera shutter — loses the rhyme with the play key on the other tab' },
+      { v: 'glyph', t: 'No disc, a large glyph',
+        d: 'the quietest shutter — stops being obviously the one thing this screen is for' } ] },
+    { id: 'j', label: 'Where the two answers sit', options: [
+      { v: 'ends',  t: 'Refuse left, confirm right',
+        d: 'the sheets\u2019 own rhythm, both on the rails — the two are far apart on a wide phone' },
+      { v: 'right', t: 'Both on the right',
+        d: 'one thumb reaches both — refuse now sits next to confirm, which is how a wrong tap happens' },
+      { v: 'stack', t: 'Confirm above, refuse under',
+        d: 'the confirm is unmissable and full width — costs a second row of height under the result' } ] },
+    { id: 'k', label: 'The viewfinder frame', options: [
+      { v: 'corners', t: 'Four brackets',
+        d: 'says "aim here" without drawing a box — four more marks on the screen' },
+      { v: 'rule',    t: 'One hairline border',
+        d: 'the frame is the box itself — reads as a container, which rule 2 of the kit rejects' },
+      { v: 'bare',    t: 'No frame',
+        d: 'nothing but the dark rectangle — nothing tells you where to point either' } ] }
+  ],
+  rec:  { i: 'fill', j: 'ends', k: 'corners' },
+  why: {
+    i: 'one act, one filled mark, same as play',
+    j: 'refuse and confirm should not be neighbours',
+    k: 'aiming needs a hint; a box would be a container'
+  },
+  note: 'The mix is in the URL. An unknown token in a link falls back to the suggested value for that axis.'
+});
 </script>
 </body>
 </html>

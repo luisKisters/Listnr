@@ -27,8 +27,13 @@
   </p>
 </div>
 
-<div class="pg-one">
-  <div class="phone"><div class="ios" id="ph-library"></div></div>
+<div class="pg-two">
+  <div class="pg-two__main">
+    <div class="pg-one" style="margin-top:0">
+      <div class="phone"><div class="ios" id="ph-library"></div></div>
+    </div>
+  </div>
+  <aside class="pg-two__rail" id="rail-library"></aside>
 </div>
 
 <p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
@@ -37,6 +42,52 @@
 <script>
 AB.chrome('library.html', 'Library — locked');
 AB.mountOne('ph-library', { tab: 'library' });
+
+/* The four things this screen still has open. Variant B itself is locked and
+   is not on the rail; neither is the progress band inside the cover edge. */
+AB.rail({
+  mount: 'rail-library',
+  title: 'Library — what is still open',
+  sub: 'Four choices this screen has not made. Variant B and the progress band are locked and are not here.',
+  axes: [
+    { id: 'a', label: 'The second line of a row', options: [
+      { v: 'stack', t: 'Author, then meta under it',
+        d: 'three lines, easiest to scan — costs vertical room, so fewer books fit a screen' },
+      { v: 'inline', t: 'Author left, meta right',
+        d: 'two lines, one more book per screen — the meta column shortens long author names' },
+      { v: 'hide',  t: 'Author only',
+        d: 'quietest row there is — the time left is then only visible once you open the book' } ] },
+    { id: 'b', label: 'Row density', options: [
+      { v: 'air',   t: '64px cover, s3 padding',
+        d: 'the rows breathe, as the design rule asks — about six books on a screen' },
+      { v: 'tight', t: '56px cover, s2 padding',
+        d: 'eight books on a screen — cover art gets small and the list starts to read as a table' },
+      { v: 'wide',  t: '72px cover, s4 padding',
+        d: 'the art carries the row — five books, and scrolling becomes the main gesture' } ] },
+    { id: 'c', label: 'When a filter matches nothing', options: [
+      { v: 'line',  t: 'One quiet line',
+        d: 'says what happened and nothing else — leaves the reader to find the filter again' },
+      { v: 'clear', t: 'The line plus a way out',
+        d: 'one text action clears the filter — costs one accent-weight word on an empty screen' },
+      { v: 'mute',  t: 'Nothing at all',
+        d: 'the list is simply empty — cheapest, and reads as a bug the first time it happens' } ] },
+    { id: 'd', label: 'How the tab bar reads', options: [
+      { v: 'bare',   t: 'Icon colour alone',
+        d: 'quietest, matches iOS — the active tab is a colour difference and nothing more' },
+      { v: 'mark',   t: 'A 2px accent bar over the active tab',
+        d: 'unmissable at a glance — a second accent mark on a screen that already has one' },
+      { v: 'noline', t: 'No hairline above the bar',
+        d: 'the content runs to the edge — the bar stops being a separate surface' } ] }
+  ],
+  rec:  { a: 'stack', b: 'air', c: 'clear', d: 'bare' },
+  why: {
+    a: 'the meta line is the reason to open a book',
+    b: 'the design rule says rows breathe',
+    c: 'a dead end is worse than one extra word',
+    d: 'the tab bar is chrome, not a place for a second accent'
+  },
+  note: 'The mix is in the URL. An unknown token in a link falls back to the suggested value for that axis.'
+});
 </script>
 </body>
 </html>

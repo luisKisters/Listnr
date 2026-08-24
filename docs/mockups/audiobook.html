@@ -25,8 +25,13 @@
   </p>
 </div>
 
-<div class="pg-one">
-  <div class="phone"><div class="ios" id="ph-player"></div></div>
+<div class="pg-two">
+  <div class="pg-two__main">
+    <div class="pg-one" style="margin-top:0">
+      <div class="phone"><div class="ios" id="ph-player"></div></div>
+    </div>
+  </div>
+  <aside class="pg-two__rail" id="rail-player"></aside>
 </div>
 
 <p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
@@ -35,6 +40,53 @@
 <script>
 AB.chrome('audiobook.html', 'Player — locked');
 AB.mountOne('ph-player', { tab: 'audiobook' });
+
+/* Player A — the decluttered layout, the five groups, the wheel in the cover's
+   box — is locked and is not on the rail. What is open is how loud each of its
+   controls is allowed to be. */
+AB.rail({
+  mount: 'rail-player',
+  title: 'Player — what is still open',
+  sub: 'Variant A, the five groups and the chapter wheel are locked. What is open is how loud each control is.',
+  axes: [
+    { id: 'e', label: 'The play key', options: [
+      { v: 'fill',  t: 'Filled accent disc',
+        d: 'the one dominant thing on the screen — a 64px block of neon green at night' },
+      { v: 'ring',  t: 'Accent ring, accent glyph',
+        d: 'same size and weight, a fraction of the light — reads slower in a dark room' },
+      { v: 'glyph', t: 'No disc, a large glyph',
+        d: 'quietest of the three — stops looking like the one key you reach for' } ] },
+    { id: 'f', label: 'How the transport is arranged', options: [
+      { v: 'spread', t: 'Rail to rail',
+        d: 'every key on the same two rails as everything else — the outer keys sit far from the thumb' },
+      { v: 'group',  t: 'Centred cluster',
+        d: 'all five inside one thumb arc — breaks the inset rule the whole set is built on' },
+      { v: 'wide',   t: 'Rail to rail, keys uncapped',
+        d: 'the tap targets fill the whole width — the row starts to read as one bar, not five keys' } ] },
+    { id: 'g', label: 'How loud the utility row is', options: [
+      { v: 'quiet',  t: 'Quiet ink',
+        d: 'speed and the pencil sit below the transport in weight — easy to miss the first time' },
+      { v: 'ink',    t: 'Full ink',
+        d: 'both read as first-class controls — competes with the transport right above it' },
+      { v: 'accent', t: 'Speed in accent',
+        d: 'the value you change most is the one you can find — spends accent away from the play key' } ] },
+    { id: 'h', label: 'Does the chapter line say it opens?', options: [
+      { v: 'bare',  t: 'Text alone',
+        d: 'the cleanest identity group there is — nothing tells you the line is tappable' },
+      { v: 'caret', t: 'A quiet caret, down closed, up open',
+        d: 'one glyph, no box, no label — costs 12px on the line and one more mark in the group' },
+      { v: 'lit',   t: 'The line in accent',
+        d: 'colour carries the affordance — a third accent mark on a screen that has two' } ] }
+  ],
+  rec:  { e: 'fill', f: 'spread', g: 'quiet', h: 'caret' },
+  why: {
+    e: 'one dominant act, one filled mark',
+    f: 'the inset rule holds everywhere else too',
+    g: 'the transport keeps the weight it earns',
+    h: 'DESIGN.md already asks for the chevron; the mockup lost it'
+  },
+  note: 'The mix is in the URL. An unknown token in a link falls back to the suggested value for that axis.'
+});
 </script>
 </body>
 </html>

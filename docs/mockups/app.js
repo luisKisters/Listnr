@@ -12,7 +12,7 @@
   'use strict';
 
   /* ── schemes + guides persistence ───────────────────────────────────────── */
-  var SCHEMES = { '1': { name: 'Black · Purple' }, '2': { name: 'Black · Neon' } };
+  var SCHEMES = { '1': { name: 'Black · Green' }, '2': { name: 'Black · Purple' } };
   var KEY_SCHEME = 'listnr-scheme';
   var KEY_GUIDES = 'listnr-guides';
   var root = document.documentElement;
@@ -195,8 +195,9 @@
   ];
   function tabbar(st) {
     return '<nav class="tabbar" aria-label="App tabs">' + TABS.map(function (t) {
-      return '<button type="button" data-act="tab" data-arg="' + t[0] + '" aria-label="' + t[1] +
-        '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' + t[2] + '</button>';
+      return '<button type="button" class="btn btn--key" data-act="tab" data-arg="' + t[0] +
+        '" aria-label="' + t[1] + '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' +
+        '<i class="tabmark" aria-hidden="true"></i>' + t[2] + '</button>';
     }).join('') + '</nav>';
   }
 
@@ -487,8 +488,12 @@
     }
     if (!e.target.matches('input[data-search]')) return;
     this.st.q = e.target.value;
-    var keep = {};
-    this.list().forEach(function (b) { keep[b.id] = 1; });
+    var keep = {}, n = 0;
+    this.list().forEach(function (b) { keep[b.id] = 1; n++; });
+    /* nothing left, or the empty line is already standing: the list has to be
+       rebuilt, not just re-hidden, or the screen would go blank without saying
+       so. paint() puts the caret back at the end of the query. */
+    if (!n || this.host.querySelector('.empty')) return this.paint();
     var rows = this.host.querySelectorAll('[data-row]');
     Array.prototype.forEach.call(rows, function (r) {
       r.hidden = !keep[r.getAttribute('data-row')];
@@ -633,7 +638,7 @@
     var on = state(b) !== 'new';
     var cover = '<span class="cover c' + b.tone + '" aria-hidden="true">' + coverHTML(b, 300) +
       (on ? '<span class="inline-p"><i style="width:' + p + '%"></i></span>' : '') + '</span>';
-    return '<button type="button" class="book" data-act="book" data-arg="' + b.id +
+    return '<button type="button" class="btn btn--row book" data-act="book" data-arg="' + b.id +
       '" data-row="' + b.id + '" data-state="' + state(b) + '">' + cover +
       '<span class="book-x">' +
         '<span class="book-t">' + esc(b.title) + '</span>' +
@@ -649,7 +654,7 @@
     var cover = '<span class="cover c' + b.tone + '" aria-hidden="true">' + coverHTML(b, 300) +
       (on ? '<span class="inline-p"><i style="width:' + p + '%"></i></span>' : '') + '</span>';
     return '<div class="sect">' + esc(label) + '</div>' +
-      '<button type="button" class="now" data-act="' + act + '">' + cover +
+      '<button type="button" class="btn btn--row now" data-act="' + act + '">' + cover +
       '<span class="now-x"><span class="now-t">' + esc(b.title) + '</span>' +
       '<span class="now-a">' + esc(b.author) + '</span>' +
       '<span class="now-m"><span>' + esc(left) + '</span><span>' + esc(right) + '</span></span></span>' +
@@ -664,8 +669,9 @@
     return '<div class="pl-id">' +
       '<div class="pl-t">' + esc(b.title) + '</div>' +
       '<div class="pl-a">' + esc(b.author + (b.narrator ? ' · ' + b.narrator : '')) + '</div>' +
-      '<button type="button" class="pl-ch" data-act="chaps" aria-expanded="' +
-        (st.chaps ? 'true' : 'false') + '">' + esc(chapName(b, chapIndex(b))) + '</button>' +
+      '<button type="button" class="btn btn--text pl-ch" data-act="chaps" aria-expanded="' +
+        (st.chaps ? 'true' : 'false') + '"><span>' + esc(chapName(b, chapIndex(b))) + '</span>' +
+        '<i class="cv" aria-hidden="true">' + IC.caret + '</i></button>' +
       '</div>';
   }
 
@@ -682,12 +688,12 @@
 
   function transport(st) {
     return '<div class="transport">' +
-      '<button type="button" class="skip" data-act="prevch" aria-label="Previous chapter">' + IC.prev + '</button>' +
-      '<button type="button" data-act="back15" aria-label="Back 15 seconds">' + IC.back15 + '</button>' +
-      '<button type="button" class="play" data-act="play" aria-label="' + (st.playing ? 'Pause' : 'Play') + '">' +
-      (st.playing ? IC.pause : IC.play) + '</button>' +
-      '<button type="button" data-act="fwd30" aria-label="Forward 30 seconds">' + IC.fwd30 + '</button>' +
-      '<button type="button" class="skip" data-act="nextch" aria-label="Next chapter">' + IC.next + '</button>' +
+      '<button type="button" class="btn btn--key skip" data-act="prevch" aria-label="Previous chapter">' + IC.prev + '</button>' +
+      '<button type="button" class="btn btn--key" data-act="back15" aria-label="Back 15 seconds">' + IC.back15 + '</button>' +
+      '<button type="button" class="btn btn--key btn--fill play" data-act="play" aria-label="' +
+        (st.playing ? 'Pause' : 'Play') + '">' + (st.playing ? IC.pause : IC.play) + '</button>' +
+      '<button type="button" class="btn btn--key" data-act="fwd30" aria-label="Forward 30 seconds">' + IC.fwd30 + '</button>' +
+      '<button type="button" class="btn btn--key skip" data-act="nextch" aria-label="Next chapter">' + IC.next + '</button>' +
       '</div>';
   }
 
@@ -696,9 +702,9 @@
   function utilRow(b, st) {
     var n = notes(b).length;
     return '<div class="util">' +
-      '<button type="button" data-act="speed" aria-label="Playback speed, now ' + b.speed.toFixed(1) + ' times">' +
-        '<span class="u-v">' + b.speed.toFixed(1) + '×</span></button>' +
-      '<button type="button" class="u-note" data-act="note" aria-label="' +
+      '<button type="button" class="btn btn--key btn--wide" data-act="speed" aria-label="Playback speed, now ' +
+        b.speed.toFixed(1) + ' times"><span class="u-v">' + b.speed.toFixed(1) + '×</span></button>' +
+      '<button type="button" class="btn btn--key btn--wide btn--rail-r u-note" data-act="note" aria-label="' +
         (n ? 'Add a note. ' + n + ' saved' : 'Add a note') + '">' +
         (n ? '<span class="n">' + n + '</span>' : '') + IC.pencil + '</button>' +
       '</div>';
@@ -708,10 +714,10 @@
     if (!st.sleepOpen) return '';
     var h = '<div class="inline"><div class="inline__opts">';
     SLEEPS.forEach(function (m) {
-      h += '<button type="button" data-act="sleepset" data-arg="' + m + '" aria-pressed="' +
+      h += '<button type="button" class="btn btn--text" data-act="sleepset" data-arg="' + m + '" aria-pressed="' +
         (st.sleep === m ? 'true' : 'false') + '">' + m + ' min</button>';
     });
-    h += '<button type="button" data-act="sleepset" data-arg="off" aria-pressed="' +
+    h += '<button type="button" class="btn btn--text" data-act="sleepset" data-arg="off" aria-pressed="' +
       (st.sleep ? 'false' : 'true') + '">Off</button>';
     return h + '</div></div>';
   }
@@ -723,7 +729,7 @@
     if (!st.note) return '';
     var list = notes(b);
     var rows = list.map(function (n, i) {
-      return '<button type="button" class="note-row" data-act="note-seek" data-arg="' + i + '">' +
+      return '<button type="button" class="btn btn--row note-row" data-act="note-seek" data-arg="' + i + '">' +
         '<span class="note-t">' + hms(n.t) + '</span>' +
         '<span class="note-x">' + esc(n.text) + '</span></button>';
     }).join('');
@@ -738,8 +744,8 @@
         '<textarea class="note-in" data-note rows="3" aria-label="Note text" ' +
           'spellcheck="false" autocapitalize="sentences"></textarea>' +
         '<div class="note-acts">' +
-          '<button type="button" class="note-cancel" data-act="note-cancel">Cancel</button>' +
-          '<button type="button" class="note-save" data-act="note-save"' +
+          '<button type="button" class="btn btn--text btn--off" data-act="note-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--text btn--go btn--end" data-act="note-save"' +
             (String(st.noteText).trim() ? '' : ' disabled') + '>Save</button>' +
         '</div>' +
         (rows ? '<div class="note-list" data-keep="notes">' + rows + '</div>' : '') +
@@ -756,7 +762,7 @@
     if (im.phase === 'menu') {
       body = '<div class="imp-list">' + ['audio', 'ebook'].map(function (k) {
         var f = IMPORTS[k];
-        return '<button type="button" class="imp-row" data-act="imp-pick" data-arg="' + k + '">' +
+        return '<button type="button" class="btn btn--row imp-row" data-act="imp-pick" data-arg="' + k + '">' +
           '<span class="imp-l">' + esc(f.label) + '</span>' +
           '<span class="imp-k">' + esc(f.kinds) + '</span></button>';
       }).join('') + '</div>';
@@ -766,14 +772,14 @@
     } else if (im.phase === 'dupe') {
       body = '<div class="imp-meta"><p class="imp-note">Already in your library</p></div>' +
         '<div class="imp-acts"><span></span>' +
-        '<button type="button" class="imp-add" data-act="imp-close">Close</button></div>';
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="imp-close">Close</button></div>';
     } else {
       body = '<div class="imp-meta"><p class="imp-t">' + esc(src.title) + '</p>' +
         src.lines.map(function (l) { return '<p class="imp-m">' + esc(l) + '</p>'; }).join('') +
         '</div>' +
         '<div class="imp-acts">' +
-        '<button type="button" class="imp-cancel" data-act="imp-close">Cancel</button>' +
-        '<button type="button" class="imp-add" data-act="imp-add">Add to library</button></div>';
+        '<button type="button" class="btn btn--text btn--off" data-act="imp-close">Cancel</button>' +
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="imp-add">Add to library</button></div>';
     }
 
     /* the sheet rises once, on the way in; the phases after that change the
@@ -810,14 +816,14 @@
     return '<div class="screen">' +
       '<div class="titlerow"><span class="h1">Library</span>' +
         '<span class="titlerow__acts">' +
-        '<button type="button" class="drop" data-act="menu" aria-expanded="' + (st.menu ? 'true' : 'false') + '">' +
-        esc(filterLabel(st)) + IC.caret + '</button>' +
-        '<button type="button" class="add" data-act="import" aria-expanded="' + (st.imp ? 'true' : 'false') +
-        '" aria-label="Import a book">' + IC.plus + '</button>' +
+        '<button type="button" class="btn btn--key btn--wide drop" data-act="menu" aria-expanded="' +
+        (st.menu ? 'true' : 'false') + '">' + esc(filterLabel(st)) + IC.caret + '</button>' +
+        '<button type="button" class="btn btn--key btn--rail-r add" data-act="import" aria-expanded="' +
+        (st.imp ? 'true' : 'false') + '" aria-label="Import a book">' + IC.plus + '</button>' +
         '</span></div>' +
       (st.menu
         ? '<div class="menu">' + FILTERS.map(function (f) {
-            return '<button type="button" data-act="filter" data-arg="' + f.k + '" aria-pressed="' +
+            return '<button type="button" class="btn btn--row" data-act="filter" data-arg="' + f.k + '" aria-pressed="' +
               (st.filter === f.k ? 'true' : 'false') + '">' + f.l +
               (st.filter === f.k ? IC.check : '') + '</button>';
           }).join('') + '</div>'
@@ -829,7 +835,9 @@
         '<div class="sect">All books</div>' +
         (list.length
           ? list.map(function (b) { return bookRow(b); }).join('')
-          : '<p class="empty">Nothing matches this filter.</p>') +
+          : '<p class="empty">Nothing here matches.' +
+            '<button type="button" class="btn btn--text btn--go empty-act" data-act="filter" ' +
+            'data-arg="all">Show all books</button></p>') +
       '</div></div>' + importSheet(st);
   }
 
@@ -842,9 +850,10 @@
     var left = st.sleep ? Math.max(1, Math.ceil(st.sleepLeft / 60)) + 'm' : null;
     return '<div class="screen screen--player">' +
       '<div class="pl-top">' +
-        '<button type="button" class="pl-back" data-act="back" aria-label="Back to library">' + IC.down + '</button>' +
+        '<button type="button" class="btn btn--key btn--rail-l pl-back" data-act="back" ' +
+          'aria-label="Back to library">' + IC.down + '</button>' +
         '<span class="pl-top__c">' + esc(formatWord(b)) + '</span>' +
-        '<button type="button" class="pl-sleep" data-act="sleep" aria-expanded="' +
+        '<button type="button" class="btn btn--key btn--wide btn--rail-r pl-sleep" data-act="sleep" aria-expanded="' +
           (st.sleepOpen ? 'true' : 'false') + '" aria-label="' +
           (left ? 'Sleep timer, ' + left + ' left' : 'Sleep timer') + '">' +
           (left ? '<span class="n">' + left + '</span>' : '') + IC.moon + '</button>' +
@@ -890,7 +899,7 @@
       body = '<p class="sc-line">A page can only be matched against a transcript, and this book ' +
         'has none yet — Listnr has to listen through the audio once first.</p>';
       acts = '<div class="sc-acts"><span></span>' +
-        '<button type="button" class="sc-go" data-act="sc-prep">Prepare this book</button></div>';
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-prep">Prepare this book</button></div>';
     } else if (ph === 'reading') {
       body = '<p class="sc-line">Reading the page…</p>';
     } else if (ph === 'match') {
@@ -899,16 +908,16 @@
         '<p class="sc-at">' + hms(SCAN.at) + '</p>' +
         '<p class="sc-ch">' + esc(chapName(b, i)) + '</p>';
       acts = '<div class="sc-acts">' +
-        '<button type="button" class="sc-no" data-act="sc-no">Not this one</button>' +
-        '<button type="button" class="sc-go" data-act="sc-jump">Jump here</button></div>';
+        '<button type="button" class="btn btn--text btn--off" data-act="sc-no">Not this one</button>' +
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-jump">Jump here</button></div>';
     } else if (ph === 'nomatch') {
       body = '<p class="sc-line">No match in this book</p>' +
         '<p class="sc-sub">Catch a few more lines, or try the facing page.</p>';
       acts = '<div class="sc-acts"><span></span>' +
-        '<button type="button" class="sc-go" data-act="sc-again">Try again</button></div>';
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="sc-again">Try again</button></div>';
     } else {
-      body = '<div class="sc-shoot"><button type="button" data-act="sc-shoot" ' +
-        'aria-label="Read the page in front of the camera">' + IC.shoot + '</button></div>' +
+      body = '<div class="sc-shoot"><button type="button" class="btn btn--key btn--fill" ' +
+        'data-act="sc-shoot" aria-label="Read the page in front of the camera">' + IC.shoot + '</button></div>' +
         '<p class="sc-hint">Point at a page</p>';
     }
 
@@ -986,13 +995,101 @@
     applyGuides(read(KEY_GUIDES) === '1', false);
   }
 
+  /* ═══ THE VARIANT RAIL ══════════════════════════════════════════════════
+     One rail per bottom-tab screen. Each axis is one thing that screen has
+     genuinely left open; each option says what it does AND what it costs.
+
+     A choice is written onto every phone's own dataset, so the CSS in
+     kit.css selects on `[data-a="…"]` and the render below never branches on
+     a variant. The active combination is joined by "." into location.hash,
+     and parsed back BY NAME on load, so a link restores the exact mix and an
+     unknown or misspelt token falls back to the suggested value instead of
+     leaving an axis unset.                                                */
+  function rail(cfg) {
+    var mount = document.getElementById(cfg.mount);
+    if (!mount) return null;
+    var axes = cfg.axes, REC = cfg.rec, WHY = cfg.why || {};
+    var V = {};
+    axes.forEach(function (ax) { V[ax.id] = REC[ax.id]; });
+
+    var byName = {};
+    axes.forEach(function (ax) {
+      ax.options.forEach(function (o) { byName[o.v] = ax.id; });
+    });
+    location.hash.slice(1).split('.').filter(Boolean).forEach(function (tok) {
+      var id = byName[tok];
+      if (id) V[id] = tok;          /* anything else is ignored → REC stands */
+    });
+
+    var phones = document.querySelectorAll('.phone');
+
+    function isRec() {
+      return axes.every(function (ax) { return V[ax.id] === REC[ax.id]; });
+    }
+
+    function apply() {
+      Array.prototype.forEach.call(phones, function (ph) {
+        axes.forEach(function (ax) { ph.dataset[ax.id] = V[ax.id]; });
+      });
+      var combo = axes.map(function (ax) { return V[ax.id]; }).join('.');
+      try { history.replaceState(null, '', '#' + combo); } catch (e) {}
+      return combo;
+    }
+
+    function draw() {
+      var combo = apply();
+      mount.innerHTML =
+        '<div class="rail__title">' + esc(cfg.title) + '</div>' +
+        '<p class="rail__sub">' + esc(cfg.sub) + '</p>' +
+        '<div class="rec">' +
+          '<div class="rec__head">Suggested mix</div>' +
+          '<div class="rec__list">' + axes.map(function (ax) {
+            var o = ax.options.filter(function (x) { return x.v === REC[ax.id]; })[0];
+            return '<div class="rec__row"><span>' + esc(ax.id) + '</span><span><b>' +
+              esc(o.t) + '</b> — ' + esc(WHY[ax.id] || '') + '</span></div>';
+          }).join('') + '</div>' +
+        '</div>' +
+        axes.map(function (ax) {
+          return '<div class="rail__group">' +
+            '<div class="rail__label">' + esc(ax.id) + ' · ' + esc(ax.label) + '</div>' +
+            '<div class="seg">' + ax.options.map(function (o) {
+              return '<button type="button" data-axis="' + ax.id + '" data-value="' + o.v +
+                '" aria-pressed="' + (V[ax.id] === o.v ? 'true' : 'false') + '">' +
+                esc(o.t) + '<small>' + esc(o.d) + '</small></button>';
+            }).join('') + '</div></div>';
+        }).join('') +
+        '<div class="rail__acts">' +
+          '<button type="button" class="quiet-act" id="' + cfg.mount + '-apply"' +
+            (isRec() ? ' aria-pressed="true" disabled' : '') + '>' +
+            (isRec() ? 'Suggested mix is active' : 'Apply suggested mix') + '</button>' +
+          '<span class="rail__combo">' + esc(combo) + '</span>' +
+        '</div>' +
+        '<p class="rail__note">' + esc(cfg.note || '') + '</p>';
+
+      Array.prototype.forEach.call(mount.querySelectorAll('[data-axis]'), function (b) {
+        b.addEventListener('click', function () {
+          V[b.getAttribute('data-axis')] = b.getAttribute('data-value');
+          draw();
+        });
+      });
+      var ap = document.getElementById(cfg.mount + '-apply');
+      if (ap) ap.addEventListener('click', function () {
+        axes.forEach(function (ax) { V[ax.id] = REC[ax.id]; });
+        draw();
+      });
+    }
+
+    draw();
+    return { get: function () { return JSON.parse(JSON.stringify(V)); }, draw: draw };
+  }
+
   function mountOne(hostId, def) {
     return new Phone(document.getElementById(hostId), def);
   }
 
   var AB = {
     IC: IC, BOOKS: BOOKS, SPEEDS: SPEEDS, SLEEPS: SLEEPS, FILTERS: FILTERS,
-    Phone: Phone, chrome: chrome, mountOne: mountOne,
+    Phone: Phone, chrome: chrome, mountOne: mountOne, rail: rail,
     esc: esc, hms: hms, span: span, coverHTML: coverHTML, pct: pct, frac: frac, state: state,
     hasAudio: hasAudio, isPaired: isPaired, formatWord: formatWord, metaLine: metaLine,
     chapLen: chapLen, chapIndex: chapIndex, chapName: chapName, wheelBox: wheelBox,
