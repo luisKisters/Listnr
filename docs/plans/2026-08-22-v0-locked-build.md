@@ -1,11 +1,11 @@
 # Plan — bring Listnr to the locked mockups (Library B · Player A)
 
-Source of truth: `mockups/library.html`, `mockups/audiobook.html`, `design/LOCKED.md`.
+Source of truth: `docs/mockups/library.html`, `docs/mockups/audiobook.html`, `docs/DESIGN.md`.
 Existing app (`Listnr.xcodeproj`, PR #1) implements the OLD Library A + busy Player A. This plan migrates it.
 Each step ends with a validation; stop when red.
 
 ## 1 · Sync tokens (½ h)
-- `App/Sources/Theme.swift` ← `mockups/kit.css`: spacing s1–s9, type scale, inset rail 20, cover 64 (rows) / full-width square (player), accent purple `#8B5CF6` + neon `#2bff3e` behind one `Scheme` enum (default purple).
+- `App/Sources/Theme.swift` ← `docs/mockups/kit.css`: spacing s1–s9, type scale, inset rail 20, cover 64 (rows) / full-width square (player), accent purple `#8B5CF6` + neon `#2bff3e` behind one `Scheme` enum (default purple).
 - Validation: build green; one `ThemeTests` asserting the token values.
 
 ## 2 · Library → variant B (2 h)
@@ -19,7 +19,7 @@ Each step ends with a validation; stop when red.
 - Scrubber: two times only. Gaps s5/s6 between groups; transport centered low.
 - Validation: UI test "chapter line opens wheel, selection seeks"; no view touches the tab bar at 390×844 and 320×568 (layout test on frames).
 
-## 4 · Device install (½ h) — Way A in `docs/testflight.md`
+## 4 · Device install (½ h) — Way A in `docs/TESTFLIGHT.md`
 - Xcode → Signing (paid team) → Run on iPhone. Signature valid ~1 year; no TestFlight needed.
 - Validation: app on phone, background audio + lock-screen controls with a real M4B from Files.
 
