@@ -1,3 +1,4 @@
+import BackgroundTasks
 import SwiftUI
 
 @main
@@ -6,8 +7,36 @@ struct ListnrApp: App {
 
     init() {
         let uiTest = ProcessInfo.processInfo.arguments.contains("-uitest")
+        if uiTest {
+            // A UI run must not inherit transcripts from the run before it.
+            TranscriptStore.directoryOverride = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("uitest-transcripts-\(UUID().uuidString)")
+        }
         let store = ListnrStore(inMemory: uiTest)
-        _model = StateObject(wrappedValue: AppModel(store: store))
+        let model = AppModel(store: store)
+        _model = StateObject(wrappedValue: model)
+        Self.registerBackgroundTasks(model: model)
+        // Only after registration: submitting before it would be fatal.
+        model.startTranscriptionIfRequested()
+    }
+
+    /// Both handlers are registered here, in `init`, because every identifier
+    /// in `BGTaskSchedulerPermittedIdentifiers` needs one before launch
+    /// finishes. Both are exact identifiers: a wildcard registration is
+    /// rejected on iOS 26.5 (see `docs/IDEAS.md`).
+    private static func registerBackgroundTasks(model: AppModel) {
+        TranscriptionJob.continuedRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: TranscriptionJob.continuedIdentifier, using: nil
+        ) { task in
+            MainActor.assumeIsolated { model.transcription.runPending(task: task) }
+        }
+        TranscriptionJob.resumeRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: TranscriptionJob.resumeIdentifier, using: nil
+        ) { task in
+            MainActor.assumeIsolated {
+                model.transcription.runOvernight(task: task, books: model.store.books)
+            }
+        }
     }
 
     var body: some Scene {
@@ -68,10 +97,11 @@ struct RootView: View {
                     title: "Reader",
                     line: "The reader is not built yet — it arrives with the paired EPUB.")
             }
+            // Provisional: the Scan tab shows the Transcription screen until
+            // the real scan-to-position UI lands, because transcription is
+            // what it needs first and the tab otherwise leads nowhere.
             Tab("Scan", systemImage: "viewfinder", value: AppModel.Tab.scan) {
-                UnderConstructionView(
-                    title: "Scan",
-                    line: "Scan-to-sync is not built yet — it arrives after notes.")
+                TranscriptionView()
             }
         }
     }

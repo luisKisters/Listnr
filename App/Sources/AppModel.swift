@@ -30,6 +30,9 @@ final class AppModel: ObservableObject {
     private var resumeAfterNote = false
     /// Set by `-sheet note`; the capture starts after the engine is wired.
     private var openNoteOnLaunch = false
+    /// Set by `-transcribing`; the run starts only once `ListnrApp` has
+    /// registered the background handlers.
+    private var startTranscriptionOnLaunch = false
 
     /// The security scope of the folder the loaded book lives in. Held for the
     /// life of the loaded book (plan risk 5), never only for the scan.
@@ -40,6 +43,8 @@ final class AppModel: ObservableObject {
     private var artworkBookID: UUID?
 
     let indexer = LibraryIndexer()
+    /// The one transcription that may be running, and its background tasks.
+    let transcription: TranscriptionJob
     /// `nonisolated(unsafe)` so `deinit` can hand it back to the notification
     /// centre: it is written once in `init` and read once in `deinit`.
     private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
@@ -56,9 +61,31 @@ final class AppModel: ObservableObject {
         return AudioPlayerEngine()
     }
 
-    init(store: ListnrStore, engine: (any PlayerEngine)? = nil) {
+    /// The same `-mockengine` precedent for speech: a UI test and a screenshot
+    /// cannot wait on a 1.2 GB model.
+    static func makeTranscriber() -> any Transcribing {
+        if ProcessInfo.processInfo.arguments.contains("-faketranscriber") {
+            return FakeTranscriber(chunkDelay: .milliseconds(600), window: 8)
+        }
+        return Transcriber()
+    }
+
+    init(
+        store: ListnrStore, engine: (any PlayerEngine)? = nil,
+        transcriber: (any Transcribing)? = nil
+    ) {
         self.store = store
         self.engine = engine ?? Self.makeEngine()
+        // The job resolves books and folder scopes through the store, so it
+        // never holds a reference back to this model.
+        transcription = TranscriptionJob(
+            transcriber: transcriber ?? Self.makeTranscriber(),
+            book: { [weak store] id in store?.books.first { $0.id == id } },
+            beginAccess: { [weak store] book in
+                guard let folderID = book.sourceFolderID,
+                      let folder = store?.folder(id: folderID) else { return nil }
+                return try folder.beginAccess()
+            })
 
         if let last = store.lastListenedID, store.books.first(where: { $0.id == last })?.hasAudio == true {
             currentBookID = last
@@ -72,6 +99,21 @@ final class AppModel: ObservableObject {
         if let i = argv.firstIndex(of: "-tab"), i + 1 < argv.count,
            let t = Tab(rawValue: argv[i + 1]) {
             tab = t
+        }
+        // `-model ready|missing|downloading` and `-transcribed` pin the
+        // Transcription screen for the UI test and the evidence shots.
+        if let i = argv.firstIndex(of: "-model"), i + 1 < argv.count {
+            switch argv[i + 1] {
+            case "ready": transcription.overrideModel(.ready)
+            case "missing": transcription.overrideModel(.missing)
+            case "downloading": transcription.overrideModel(.downloading(fraction: 0.42))
+            default: break
+            }
+        }
+        startTranscriptionOnLaunch = argv.contains("-transcribing")
+        if argv.contains("-transcribed"), let id = currentBookID {
+            try? TranscriptStore.save(
+                Transcript(bookID: id, words: [], language: "en", createdAt: Date()))
         }
         // deep-launch support: `-sheet import|note` for the evidence shots.
         // The note sheet goes through the real capture path, pause policy and
@@ -89,7 +131,13 @@ final class AppModel: ObservableObject {
         foregroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.rescanSources() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.rescanSources()
+                // A continued-processing task may only be submitted from the
+                // foreground, so this is where an expired job picks itself up.
+                self.transcription.resumeIfNeeded(books: self.store.books)
+            }
         }
         rescanSources()
         if openNoteOnLaunch {
@@ -102,6 +150,16 @@ final class AppModel: ObservableObject {
         if let foregroundObserver {
             NotificationCenter.default.removeObserver(foregroundObserver)
         }
+    }
+
+    /// `-transcribing` runs the real start path, so the evidence shot is a
+    /// real run caught mid-way, never a painted state. Called by `ListnrApp`
+    /// after the background handlers exist.
+    func startTranscriptionIfRequested() {
+        guard startTranscriptionOnLaunch, let id = currentBookID else { return }
+        startTranscriptionOnLaunch = false
+        transcription.overrideModel(.ready)
+        transcription.start(bookID: id)
     }
 
     var currentBook: Book? {
