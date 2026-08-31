@@ -520,7 +520,18 @@ final class AppModel: ObservableObject {
             self.transcriber = transcriber
             try await transcriber.prepare(models: models)
             preparationFolderAccess = try securityScope(for: bookID)
-            _ = try await transcriber.transcribe(url: url, bookID: bookID) { [weak self] fraction in
+            // A checkpoint means a stopped run: continue it instead of
+            // starting over. Cancel keeps the checkpoint; only the final
+            // write deletes it.
+            let checkpoint = TranscriptCheckpoint.load(bookID: bookID)
+            if let checkpoint, checkpoint.duration > 0 {
+                preparationProgress = checkpoint.nextOffset / checkpoint.duration
+            }
+            _ = try await transcriber.transcribe(
+                url: url, bookID: bookID,
+                from: checkpoint?.nextOffset ?? 0,
+                seed: checkpoint?.words ?? []
+            ) { [weak self] fraction in
                 Task { @MainActor in self?.preparationProgress = fraction }
             }
             preparationProgress = nil

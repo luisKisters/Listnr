@@ -36,6 +36,27 @@ final class TranscriptTests: XCTestCase {
         XCTAssertEqual(loaded.createdAt, transcript.createdAt)
     }
 
+    func testCheckpointRoundTripsAndDeletesWithTheTranscript() throws {
+        let checkpoint = TranscriptCheckpoint(
+            bookID: bookID, nextOffset: 596, duration: 3_600,
+            words: [TranscriptWord(text: "bis", start: 595.2)])
+        try checkpoint.save()
+        XCTAssertEqual(TranscriptCheckpoint.load(bookID: bookID), checkpoint)
+
+        Transcript.delete(bookID: bookID)
+        XCTAssertNil(TranscriptCheckpoint.load(bookID: bookID))
+    }
+
+    func testFinalWriteRemovesTheCheckpoint() throws {
+        try TranscriptCheckpoint(
+            bookID: bookID, nextOffset: 596, duration: 3_600, words: []
+        ).save()
+        try Transcriber.write(Transcript(
+            bookID: bookID, words: [], language: nil, createdAt: Date()))
+        XCTAssertNil(TranscriptCheckpoint.load(bookID: bookID))
+        XCTAssertNotNil(Transcript.load(bookID: bookID))
+    }
+
     func testHasTranscriptReflectsTheFileOnDisk() throws {
         XCTAssertFalse(makeBook().hasTranscript)
         try Transcript(

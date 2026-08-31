@@ -34,6 +34,8 @@ actor Transcriber {
     func transcribe(
         url: URL,
         bookID: UUID,
+        from: TimeInterval = 0,
+        seed: [TranscriptWord] = [],
         onProgress: @escaping @Sendable (Double) -> Void = { _ in }
     ) async throws -> Transcript {
         try Task.checkCancellation()
@@ -47,6 +49,11 @@ actor Transcriber {
         guard let track = tracks.first else { throw TranscriberError.unreadable }
 
         let reader = try AVAssetReader(asset: asset)
+        if from > 0 {
+            reader.timeRange = CMTimeRange(
+                start: CMTime(seconds: from, preferredTimescale: 600),
+                end: .positiveInfinity)
+        }
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVLinearPCMBitDepthKey: 32,
@@ -63,10 +70,12 @@ actor Transcriber {
         let overlapSamples = min(Int(overlapSeconds * Double(sampleRate)), strideSamples / 2)
         let overlapTime = TimeInterval(overlapSamples) / Double(sampleRate)
 
-        var words: [TranscriptWord] = []
+        var words = seed
         var buffer: [Float] = []
-        var windowStart: TimeInterval = 0
-        var firstWindow = true
+        var windowStart: TimeInterval = from
+        // A resumed first window drops the overlap exactly like a non-first
+        // window: the words before `from` are already in the seed.
+        var firstWindow = from == 0
 
         while case let sampleBuffer? = output.copyNextSampleBuffer() {
             try Task.checkCancellation()
@@ -87,6 +96,10 @@ actor Transcriber {
                 firstWindow = false
                 buffer.removeFirst(strideSamples - overlapSamples)
                 windowStart += Double(strideSamples - overlapSamples) / Double(sampleRate)
+                try TranscriptCheckpoint(
+                    bookID: bookID, nextOffset: windowStart,
+                    duration: duration, words: words
+                ).save()
                 onProgress(min(windowStart, duration) / duration)
             }
         }
@@ -131,6 +144,7 @@ actor Transcriber {
                 try FileManager.default.removeItem(at: target)
             }
             try FileManager.default.moveItem(at: temp, to: target)
+            TranscriptCheckpoint.delete(bookID: transcript.bookID)
         } catch {
             try? FileManager.default.removeItem(at: temp)
             throw error

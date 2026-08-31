@@ -36,6 +36,36 @@ extension Transcript {
 
     static func delete(bookID: UUID) {
         try? FileManager.default.removeItem(at: url(for: bookID))
+        TranscriptCheckpoint.delete(bookID: bookID)
+    }
+}
+
+/// Where a stopped preparation continues. Written after every full window,
+/// deleted by the final `Transcriber.write`; "stop" is "pause".
+struct TranscriptCheckpoint: Codable, Hashable, Sendable {
+    let bookID: UUID
+    let nextOffset: TimeInterval
+    let duration: TimeInterval
+    let words: [TranscriptWord]
+}
+
+extension TranscriptCheckpoint {
+    static func url(for bookID: UUID) -> URL {
+        Transcript.directory().appendingPathComponent("\(bookID.uuidString).partial.json")
+    }
+
+    func save() throws {
+        let data = try JSONEncoder().encode(self)
+        try data.write(to: Self.url(for: bookID), options: .atomic)
+    }
+
+    static func load(bookID: UUID) -> TranscriptCheckpoint? {
+        guard let data = try? Data(contentsOf: url(for: bookID)) else { return nil }
+        return try? JSONDecoder().decode(TranscriptCheckpoint.self, from: data)
+    }
+
+    static func delete(bookID: UUID) {
+        try? FileManager.default.removeItem(at: url(for: bookID))
     }
 }
 
