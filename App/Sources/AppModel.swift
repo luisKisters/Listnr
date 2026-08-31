@@ -1,3 +1,4 @@
+import BackgroundTasks
 import Foundation
 import MediaPlayer
 import SwiftUI
@@ -102,6 +103,7 @@ final class AppModel: ObservableObject {
             MainActor.assumeIsolated {
                 self?.rescanSources()
                 self?.refreshModelState()
+                self?.resumeCheckpointedPreparation()
             }
         }
         rescanSources()
@@ -445,7 +447,14 @@ final class AppModel: ObservableObject {
         guard modelDownloadTask == nil, modelDownload != .ready else { return }
         bookWaitingForModel = bookID
         modelDownload = .downloading(0)
-        modelDownloadTask = Task { [weak self] in await self?.runModelDownload() }
+        // The download rides a continued-processing task when the system takes
+        // one, so it keeps going when the phone locks. Refused (the simulator
+        // always refuses) it runs in-app exactly as before.
+        if !submitContinued(
+            work: .download, title: "Downloading speech model",
+            subtitle: "460 MB, once per phone") {
+            modelDownloadTask = Task { [weak self] in await self?.runModelDownload() }
+        }
     }
 
     /// Stop, named as what it is: there is no resume, so the next download
@@ -476,6 +485,7 @@ final class AppModel: ObservableObject {
         bookWaitingForModel = nil
         modelDownloadTask = nil
         UIApplication.shared.endBackgroundTask(assertion)
+        finishBackgroundTask(success: modelDownload == .ready)
     }
 
     /// The bar never walks backwards — FluidAudio counts bytes over the whole
@@ -484,6 +494,7 @@ final class AppModel: ObservableObject {
     private func publishModelProgress(_ fraction: Double) {
         guard case .downloading(let shown) = modelDownload else { return }
         modelDownload = .downloading(max(shown, min(fraction, 0.99)))
+        publishPillProgress(fraction)
     }
 
     // MARK: scan preparation
@@ -503,8 +514,12 @@ final class AppModel: ObservableObject {
         else { return }
         preparationNotice = nil
         preparationProgress = 0
-        preparationTask = Task { [weak self] in
-            await self?.runPreparation(bookID: bookID, url: url)
+        if !submitContinued(
+            work: .prepare(bookID: bookID, url: url), title: "Preparing \(book.title)",
+            subtitle: "Listnr is transcribing for scan-to-position") {
+            preparationTask = Task { [weak self] in
+                await self?.runPreparation(bookID: bookID, url: url)
+            }
         }
     }
 
@@ -532,7 +547,10 @@ final class AppModel: ObservableObject {
                 from: checkpoint?.nextOffset ?? 0,
                 seed: checkpoint?.words ?? []
             ) { [weak self] fraction in
-                Task { @MainActor in self?.preparationProgress = fraction }
+                Task { @MainActor in
+                    self?.preparationProgress = fraction
+                    self?.publishPillProgress(fraction)
+                }
             }
             preparationProgress = nil
         } catch is CancellationError {
@@ -545,6 +563,13 @@ final class AppModel: ObservableObject {
         preparationFolderAccess?.end()
         preparationFolderAccess = nil
         preparationTask = nil
+        let finished = TranscriptCheckpoint.load(bookID: bookID) == nil
+        finishBackgroundTask(success: finished)
+        if finished {
+            BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.resumeTaskID)
+        } else {
+            scheduleOvernightResume()
+        }
     }
 
     private func securityScope(for bookID: UUID) throws -> FolderSource.Access? {
@@ -585,6 +610,120 @@ final class AppModel: ObservableObject {
     func selectChapterTimestamp(_ time: TimeInterval) {
         engine.seek(to: max(0, min(time, max(0, engine.duration - 0.05))))
         persistPosition()
+    }
+
+    // MARK: background continuation (BGContinuedProcessingTask, iOS 26)
+
+    static let continuedTaskID = "com.luisKisters.Listnr.transcribe"
+    static let resumeTaskID = "com.luisKisters.Listnr.transcribe-resume"
+    /// Set once by `ListnrApp` from `register`'s return value. Submitting an
+    /// identifier with no registered handler raises an Objective-C exception
+    /// Swift cannot catch, so these are hard gates.
+    static var continuedRegistered = false
+    static var resumeRegistered = false
+
+    enum PendingWork {
+        case download
+        case prepare(bookID: UUID, url: URL)
+    }
+
+    private var pendingWork: PendingWork?
+    private var backgroundTask: BGTask?
+
+    /// True when the scheduler took the work: the registered handler will call
+    /// `runPendingBackground`. False sends the caller down the in-app path.
+    private func submitContinued(work: PendingWork, title: String, subtitle: String) -> Bool {
+        guard Self.continuedRegistered else { return false }
+        let request = BGContinuedProcessingTaskRequest(
+            identifier: Self.continuedTaskID, title: title, subtitle: subtitle)
+        request.strategy = .queue
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            pendingWork = work
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// The continued-processing handler. The work runs inside the task; expiry
+    /// cancels it and the checkpoint on disk is the state.
+    func runPendingBackground(task: BGTask) {
+        guard let work = pendingWork else {
+            task.setTaskCompleted(success: false)
+            return
+        }
+        pendingWork = nil
+        backgroundTask = task
+        (task as? BGContinuedProcessingTask)?.progress.totalUnitCount = 100
+        switch work {
+        case .download:
+            let running: Task<Void, Never> = Task { [weak self] in
+                await self?.runModelDownload()
+            }
+            modelDownloadTask = running
+            task.expirationHandler = { running.cancel() }
+        case .prepare(let bookID, let url):
+            let running: Task<Void, Never> = Task { [weak self] in
+                await self?.runPreparation(bookID: bookID, url: url)
+            }
+            preparationTask = running
+            task.expirationHandler = { running.cancel() }
+        }
+    }
+
+    private func publishPillProgress(_ fraction: Double) {
+        (backgroundTask as? BGContinuedProcessingTask)?
+            .progress.completedUnitCount = Int64(min(max(fraction, 0), 1) * 100)
+    }
+
+    private func finishBackgroundTask(success: Bool) {
+        backgroundTask?.setTaskCompleted(success: success)
+        backgroundTask = nil
+    }
+
+    /// Called on every foreground: a checkpoint on disk is a stopped run, and
+    /// a continued task may only be submitted from the foreground.
+    func resumeCheckpointedPreparation() {
+        guard modelDownload == .ready, preparationTask == nil, modelDownloadTask == nil,
+              let book = store.books.first(where: {
+                  !$0.isMissing && !$0.hasTranscript
+                      && FileManager.default.fileExists(
+                          atPath: TranscriptCheckpoint.url(for: $0.id).path)
+              })
+        else { return }
+        prepareForScanning(bookID: book.id)
+    }
+
+    /// The overnight fallback: idle on the charger, minutes at a time — enough
+    /// to advance a checkpointed book while the phone sleeps.
+    private func scheduleOvernightResume() {
+        guard Self.resumeRegistered else { return }
+        let request = BGProcessingTaskRequest(identifier: Self.resumeTaskID)
+        request.requiresExternalPower = true
+        request.requiresNetworkConnectivity = false
+        try? BGTaskScheduler.shared.submit(request)
+    }
+
+    /// The overnight handler: same preparation, no pill.
+    func runOvernight(task: BGTask) {
+        guard modelDownload == .ready, preparationTask == nil,
+              let book = store.books.first(where: {
+                  !$0.isMissing && !$0.hasTranscript
+                      && FileManager.default.fileExists(
+                          atPath: TranscriptCheckpoint.url(for: $0.id).path)
+              }),
+              let url = book.audioURL
+        else {
+            task.setTaskCompleted(success: true)
+            return
+        }
+        backgroundTask = task
+        let running: Task<Void, Never> = Task { [weak self] in
+            await self?.runPreparation(bookID: book.id, url: url)
+        }
+        preparationTask = running
+        task.expirationHandler = { running.cancel() }
     }
 
     /// The scan's confirmed jump: the matched book becomes the loaded one, the

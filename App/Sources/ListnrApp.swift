@@ -1,3 +1,4 @@
+import BackgroundTasks
 import SwiftUI
 
 @main
@@ -7,7 +8,24 @@ struct ListnrApp: App {
     init() {
         let uiTest = ProcessInfo.processInfo.arguments.contains("-uitest")
         let store = ListnrStore(inMemory: uiTest)
-        _model = StateObject(wrappedValue: AppModel(store: store))
+        let model = AppModel(store: store)
+        _model = StateObject(wrappedValue: model)
+        Self.registerBackgroundTasks(model: model)
+    }
+
+    /// Both handlers, registered before launch finishes on the main queue, so
+    /// the handlers may touch the main-actor model directly.
+    private static func registerBackgroundTasks(model: AppModel) {
+        AppModel.continuedRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: AppModel.continuedTaskID, using: .main
+        ) { task in
+            MainActor.assumeIsolated { model.runPendingBackground(task: task) }
+        }
+        AppModel.resumeRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: AppModel.resumeTaskID, using: .main
+        ) { task in
+            MainActor.assumeIsolated { model.runOvernight(task: task) }
+        }
     }
 
     var body: some Scene {

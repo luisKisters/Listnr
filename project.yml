@@ -36,7 +36,10 @@ targets:
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, processing]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.luisKisters.Listnr.transcribe
+          - com.luisKisters.Listnr.transcribe-resume
         NSCameraUsageDescription: Listnr reads the page in front of the camera to find that spot in the audiobook.
     dependencies:
       - package: FluidAudio

@@ -586,8 +586,8 @@ struct ModelDownloadSheet: View {
         case .downloading:
             return "Downloading once. It stays on this device afterwards."
         default:
-            return "Matching a page needs the speech model on this device. It downloads once "
-                + "and stays. Keep Listnr open — it stops when the phone locks."
+            return "Matching a page needs the speech model on this device. "
+                + "It downloads once and stays, even when the phone locks."
         }
     }
 }
