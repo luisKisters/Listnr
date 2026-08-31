@@ -2,7 +2,7 @@
      role="img" aria-label="Listnr">
   <title>Listnr</title>
   <rect width="512" height="512" fill="#000000"/>
-  <g fill="#2bff3e">
+  <g fill="#8B5CF6">
     <path d="M256 152c-40-34-96-44-140-40a16 16 0 0 0-14 16v212a16 16 0 0 0 18 16c40-4 92 4 136 36z"/>
     <path d="M256 152c40-34 96-44 140-40a16 16 0 0 1 14 16v212a16 16 0 0 1-18 16c-40-4-92 4-136 36z"
           opacity="0.55"/>
