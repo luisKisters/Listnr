@@ -93,8 +93,8 @@ python3 -m http.server 8741 --directory docs/mockups
 - `docs/assets/icon/` — the icon master SVGs
 
 Visual system: near-black `#050505`, white ink ramp, purple accent `#8B5CF6`, SF Pro only,
-SF Mono for times. No badges, no explanatory caption strips. The app icon is the one place the
-lime `#2bff3e` appears.
+SF Mono for times. No badges, no explanatory caption strips. The app icon uses the same violet —
+one accent everywhere.
 
 ## Layout
 

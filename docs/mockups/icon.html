@@ -141,7 +141,7 @@ const ICONS = [
   },
   {
     title: "Open book — CHOSEN",
-    note: "Two solid pages, the far one dimmed. Shipped as the app icon, scheme 1.",
+    note: "Two solid pages, the far one dimmed. Shipped as the app icon, scheme 2 (the app accent violet).",
     body: `
       <path d="M256 152c-40-34-96-44-140-40a16 16 0 0 0-14 16v212a16 16 0 0 0 18 16c40-4 92 4 136 36z"/>
       <path d="M256 152c40-34 96-44 140-40a16 16 0 0 1 14 16v212a16 16 0 0 1-18 16c-40-4-92 4-136 36z"
@@ -185,7 +185,7 @@ big.innerHTML = ICONS.map((ic, i) => `
 
 const bar = document.getElementById("bar");
 bar.innerHTML = SCHEMES.map((s, i) => `
-  <button data-i="${i}" aria-pressed="${i === 0}">
+  <button data-i="${i}" aria-pressed="${i === 1}">
     <span class="swatch" style="background:${s.fg};outline:1px solid ${s.bg}"></span>${i + 1}
   </button>`).join("");
 
@@ -200,7 +200,7 @@ bar.addEventListener("click", e => {
   const b = e.target.closest("button");
   if (b) apply(+b.dataset.i);
 });
-apply(0);
+apply(1);
 </script>
 </body>
 </html>
