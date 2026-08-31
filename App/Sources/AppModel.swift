@@ -56,9 +56,14 @@ final class AppModel: ObservableObject {
         return AudioPlayerEngine()
     }
 
-    init(store: ListnrStore, engine: (any PlayerEngine)? = nil) {
+    init(
+        store: ListnrStore, engine: (any PlayerEngine)? = nil,
+        modelCache: AsrModelCache = .onDisk()
+    ) {
         self.store = store
         self.engine = engine ?? Self.makeEngine()
+        self.modelCache = modelCache
+        self.modelDownload = modelCache.isDownloaded() ? .ready : .missing
 
         if let last = store.lastListenedID, store.books.first(where: { $0.id == last })?.hasAudio == true {
             currentBookID = last
@@ -66,6 +71,11 @@ final class AppModel: ObservableObject {
             currentBookID = store.books.first(where: { $0.hasAudio })?.id
         }
         loadCurrentBook(into: self.engine)
+        #if DEBUG
+        if ScanFixture.isActive, let id = currentBookID {
+            ScanFixture.install(bookID: id)
+        }
+        #endif
 
         // deep-launch support: `-tab audiobook|reader|scan|library`
         let argv = ProcessInfo.processInfo.arguments
@@ -89,7 +99,10 @@ final class AppModel: ObservableObject {
         foregroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.rescanSources() }
+            MainActor.assumeIsolated {
+                self?.rescanSources()
+                self?.refreshModelState()
+            }
         }
         rescanSources()
         if openNoteOnLaunch {
@@ -411,6 +424,126 @@ final class AppModel: ObservableObject {
         loadCurrentBook(into: engine)
     }
 
+    // MARK: the speech model, downloaded once per install
+
+    private let modelCache: AsrModelCache
+    @Published private(set) var modelDownload: ModelDownload
+    private var modelDownloadTask: Task<Void, Never>?
+    /// The book the tap was about. It starts preparing the moment the model
+    /// lands: the user already asked, and asking twice is a toll.
+    private(set) var bookWaitingForModel: UUID?
+
+    /// The download only runs in the foreground, so coming back is the moment
+    /// the answer can have changed. A download in flight is not second-guessed,
+    /// and a failure keeps its message until something is tried again.
+    private func refreshModelState() {
+        guard modelDownloadTask == nil, modelDownload != .failed else { return }
+        modelDownload = modelCache.isDownloaded() ? .ready : .missing
+    }
+
+    func downloadModel(then bookID: UUID?) {
+        guard modelDownloadTask == nil, modelDownload != .ready else { return }
+        bookWaitingForModel = bookID
+        modelDownload = .downloading(0)
+        modelDownloadTask = Task { [weak self] in await self?.runModelDownload() }
+    }
+
+    /// Stop, named as what it is: there is no resume, so the next download
+    /// starts at zero.
+    func stopModelDownload() {
+        modelDownloadTask?.cancel()
+    }
+
+    private func runModelDownload() async {
+        // iOS gives roughly 30 s after the app leaves the foreground. This is
+        // not a background transfer — that needs a background URLSession
+        // FluidAudio does not expose — it only stops the task dying the instant
+        // the phone locks.
+        let assertion = UIApplication.shared.beginBackgroundTask(withName: "Speech model")
+        do {
+            try await modelCache.download { [weak self] fraction in
+                Task { @MainActor in self?.publishModelProgress(fraction) }
+            }
+            try Task.checkCancellation()
+            modelDownload = .ready
+            if let bookID = bookWaitingForModel { prepareForScanning(bookID: bookID) }
+        } catch is CancellationError {
+            modelDownload = .missing
+        } catch {
+            modelDownload = .failed
+            NSLog("Listnr: the speech model could not be downloaded: \(error.localizedDescription)")
+        }
+        bookWaitingForModel = nil
+        modelDownloadTask = nil
+        UIApplication.shared.endBackgroundTask(assertion)
+    }
+
+    /// The bar never walks backwards — FluidAudio counts bytes over the whole
+    /// repository and then restarts the count for the compile pass — and it
+    /// never says 100 before the model is loaded.
+    private func publishModelProgress(_ fraction: Double) {
+        guard case .downloading(let shown) = modelDownload else { return }
+        modelDownload = .downloading(max(shown, min(fraction, 0.99)))
+    }
+
+    // MARK: scan preparation
+
+    private var transcriber: Transcriber?
+    @Published private(set) var preparationProgress: Double?
+    @Published private(set) var preparationNotice: String?
+    private var preparationTask: Task<Void, Never>?
+    private var preparationFolderAccess: FolderSource.Access?
+
+    func prepareForScanning(bookID: UUID) {
+        guard modelDownload == .ready,
+              preparationTask == nil,
+              let book = store.books.first(where: { $0.id == bookID }),
+              let url = book.audioURL,
+              !book.hasTranscript
+        else { return }
+        preparationNotice = nil
+        preparationProgress = 0
+        preparationTask = Task { [weak self] in
+            await self?.runPreparation(bookID: bookID, url: url)
+        }
+    }
+
+    func cancelPreparation() {
+        preparationTask?.cancel()
+    }
+
+    private func runPreparation(bookID: UUID, url: URL) async {
+        do {
+            try Task.checkCancellation()
+            let models = try await Transcriber.loadModels()
+            let transcriber = self.transcriber ?? Transcriber()
+            self.transcriber = transcriber
+            try await transcriber.prepare(models: models)
+            preparationFolderAccess = try securityScope(for: bookID)
+            _ = try await transcriber.transcribe(url: url, bookID: bookID) { [weak self] fraction in
+                Task { @MainActor in self?.preparationProgress = fraction }
+            }
+            preparationProgress = nil
+        } catch is CancellationError {
+            preparationProgress = nil
+        } catch {
+            preparationProgress = nil
+            preparationNotice = "This audiobook could not be prepared."
+            NSLog("Listnr: transcription failed for \(url.lastPathComponent): \(error.localizedDescription)")
+        }
+        preparationFolderAccess?.end()
+        preparationFolderAccess = nil
+        preparationTask = nil
+    }
+
+    private func securityScope(for bookID: UUID) throws -> FolderSource.Access? {
+        guard let book = store.books.first(where: { $0.id == bookID }),
+              let folderID = book.sourceFolderID,
+              let folder = store.folder(id: folderID)
+        else { return nil }
+        return try folder.beginAccess()
+    }
+
     // MARK: notes — capture pauses playback; saving or cancelling resumes
 
     func beginNoteCapture() {
@@ -441,6 +574,17 @@ final class AppModel: ObservableObject {
     func selectChapterTimestamp(_ time: TimeInterval) {
         engine.seek(to: max(0, min(time, max(0, engine.duration - 0.05))))
         persistPosition()
+    }
+
+    /// The scan's confirmed jump: the matched book becomes the loaded one, the
+    /// engine seeks, the position is persisted and the player is what the user
+    /// lands on.
+    func jumpFromScan(bookID: UUID, time: TimeInterval) {
+        if bookID != currentBookID, let book = store.books.first(where: { $0.id == bookID }) {
+            openInPlayer(book)
+        }
+        selectChapterTimestamp(time)
+        tab = .audiobook
     }
 
     var notesForCurrentBook: [Note] {

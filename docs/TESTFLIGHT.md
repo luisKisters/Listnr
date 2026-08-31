@@ -78,6 +78,48 @@ you tick it.
 - [ ] Force-quit and relaunch: position, folder and notes survive; the rescan adds a newly
       copied M4B without another picker.  Date: ______
 
+### Real-camera scan pass
+
+The simulator has no camera, so the UI suite injects a fixed page image
+(`-scanfixture`). Only a phone proves the lens. Do this once per device build.
+
+### The speech-model download
+
+460 MB, once per install. It only runs in the foreground and it cannot resume,
+so the only way to prove it is to walk it on a phone that does not have it yet.
+Delete the app first — that takes the model with it.
+
+- [ ] Scan tab, a book with no transcript, model not on disk: the button reads
+      "Download the model", not "Prepare this book". Tap it — the sheet says it downloads
+      once and stops when the phone locks.  Date: ______
+- [ ] Tap Download: the percentage climbs on the bar in the sheet and on the Scan button
+      under it. A tap outside the sheet does nothing.  Date: ______
+- [ ] Lock the phone for a minute, unlock: the download stopped and the sheet offers
+      Download again from zero. This is the honest behaviour, not a bug.  Date: ______
+- [ ] Tap Stop mid-download, then Download again: it restarts at 0 per cent.  Date: ______
+- [ ] Let it finish: the sheet closes itself and the book that was tapped starts
+      preparing without a second tap.  Date: ______
+- [ ] Turn Wi-Fi and cellular off, tap Download: the sheet says the model could not be
+      downloaded and offers "Try again".  Date: ______
+
+### Real-camera scan pass, continued
+
+- [ ] Scan tab with a book that has no transcript and the model already on disk: it says
+      so and offers "Prepare this book", with no sheet.  Date: ______
+- [ ] Preparation runs in the background: leave the tab, play the book, come back. The
+      percentage kept climbing and playback never stuttered.  Date: ______
+- [ ] With the transcript ready: point the camera at a page of the paper book, tap the
+      shutter. The frame freezes, the recognised words are quoted back with a timestamp
+      and a chapter.  Date: ______
+- [ ] "Jump here": the Audiobook tab opens at that timestamp, and it is the right spot
+      in the narration — listen for ten seconds to be sure.  Date: ______
+- [ ] "Not this one": back to the viewfinder, and a second shutter tap works without
+      re-aiming from scratch.  Date: ______
+- [ ] A page from a different book, and a page of the Hörspiel edition: both must say
+      "No match in this book" rather than guessing.  Date: ______
+- [ ] Camera permission denied in Settings: the tab says the camera is unavailable and
+      the shutter is disabled — never inert without a reason.  Date: ______
+
 **Rule:** any failing item goes back to its owning step (5, 6 or 7) in
 `docs/plans/2026-08-22-listnr-v1.md`, never into a workaround in this document.
 

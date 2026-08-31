@@ -20,20 +20,25 @@
     jumps on its own — a wrong guess that moves the book is worse than a guess you can refuse.
   </p>
   <p>
-    <strong>One skeleton, in every state.</strong> The book line, the frame and one button stand in
+    <strong>One skeleton, in every state.</strong> The close slot, the frame and one button stand in
     exactly the same place and at exactly the same size from the first tap to the last; only what is
-    inside them changes. The frame keeps its four brackets and its box whether it holds the camera,
-    the frozen page, the result, or the book list. <strong>The button is the state machine</strong> —
-    shutter, then spinner, then "Jump here" — so nothing has to appear or disappear to say what is
-    happening.
+    inside them changes. The frame keeps its four brackets and takes every pixel left over between
+    the head and the button, so it is the one box that flexes and the button's place in the gap
+    follows from it. <strong>The button is the state machine</strong> — and it is a filled accent
+    button in every state, shutter to "Prepare this book". While it works, the fill stays and the
+    loader turns inside it.
+  </p>
+  <p>
+    The loop is now four steps, not three: the page is <b>read</b>, then what was read is
+    <b>searched</b> for in the transcript, and only then does a match or a miss come back. They can
+    fail apart, so they say different things.
   </p>
   <p>
     Everything below is live. The first phone starts at the shutter and walks the whole loop — its
     shots alternate between a hit and a miss, so both endings are reachable — and the others open
     straight into the state they are named for. Tap the book title on any of them and the frame
-    becomes the selector. Turn the guides on in the bar: the line, the frame and the button all land
-    on the same two rails as every other screen, and the button sits on the centre of the gap
-    between the frame and the tab bar.
+    becomes the drum. Turn the guides on in the bar: everything lands on the same two rails as every
+    other screen.
   </p>
 </div>
 
@@ -46,9 +51,9 @@
       <div class="pg-var__head"><span class="pg-var__name">Idle</span></div>
       <div class="phone"><div class="ios" id="ph-scan-idle"></div></div>
       <p class="pg-var__why">The viewfinder is a dark box with a bracket frame, not a photograph:
-        a rendered page would promise a fidelity nothing here has. The hint sits <b>over</b> the
-        camera on a slight darkening, where the eye already is, and leaves for good once a scan has
-        been taken — it has said everything it can say. The line above names the book being matched,
+        a rendered page would promise a fidelity nothing here has. The hint stands in the middle of
+        the frame, where everything the frame says stands, and leaves for good once a scan has been
+        taken — it has said everything it can say. The book being matched is named on the line,
         because a scan that silently searched <b>the wrong book</b> would explain none of its
         failures.</p>
     </div>
@@ -56,32 +61,39 @@
     <div class="pg-var">
       <div class="pg-var__head"><span class="pg-var__name">Reading</span></div>
       <div class="phone"><div class="ios" id="ph-scan-reading"></div></div>
-      <p class="pg-var__why">The frame freezes and dims, and <b>the button itself becomes the
-        loading state</b> — same size, same place, so nothing on the screen moves. There is no
-        progress arc claiming a number: OCR and a fuzzy match have no honest fraction, so the arc
-        simply turns. A line of text saying "reading…" would be a second thing to look at for
-        something the button already says.</p>
+      <p class="pg-var__why">The frame freezes and dims, and the button keeps its fill with
+        <b>the loader turning inside it</b> — same size, same place, so nothing on the screen moves
+        and nothing about the button suggests it went away. There is no arc claiming a number: OCR
+        has no honest fraction.</p>
+    </div>
+
+    <div class="pg-var">
+      <div class="pg-var__head"><span class="pg-var__name">Searching</span></div>
+      <div class="phone"><div class="ios" id="ph-scan-searching"></div></div>
+      <p class="pg-var__why">The words are in hand; this is the transcript being searched. Same
+        button, same loader — <b>only the frame changes its line</b>, because the two steps fail for
+        different reasons: a page too dark to read is not a page whose words are nowhere in the
+        book, and the failure that follows has to be able to say which one happened.</p>
     </div>
 
     <div class="pg-var">
       <div class="pg-var__head"><span class="pg-var__name">Match</span></div>
       <div class="phone"><div class="ios" id="ph-scan-match"></div></div>
-      <p class="pg-var__why">The result lands <b>where the page was</b>, inside the frame's own box:
-        the snippet quoted back first, then the second and the chapter. Three lines of the book's
-        own words say more about whether the match is right than any confidence score would. The
-        button becomes the confirm. Refusing is the close at the top right — it goes back to the
-        viewfinder, not to an apology, and it is far away from the thing that moves the book.</p>
+      <p class="pg-var__why">The result lands <b>where the page was</b>, centred in the frame's own
+        box: the snippet quoted back first, then the second and the chapter. Three lines of the
+        book's own words say more about whether the match is right than any confidence score would.
+        Refusing is the close at the top right — it goes back to the viewfinder, not to an apology,
+        and it is far away from the thing that moves the book.</p>
     </div>
 
     <div class="pg-var">
       <div class="pg-var__head"><span class="pg-var__name">Choosing the book</span></div>
       <div class="phone"><div class="ios" id="ph-scan-sel"></div></div>
-      <p class="pg-var__why">The title in the line is a value with a caret — the same grammar as the
-        library's filter, not a second pattern for the same act. Tapping it turns <b>the frame's box
-        into the list</b>, so the selector costs no new surface. Each row says whether that book is
-        already transcribed, as plain quiet text, because picking a book that cannot be scanned is
-        the one mistake this list exists to prevent. The button waits, disabled, until a book is
-        picked.</p>
+      <p class="pg-var__why">The frame's box becomes <b>the same drum the chapters use</b> — the
+        iOS wheel, settling on a row to choose it, no second component invented for the same act.
+        Each row says on its right end whether that book is transcribed, as quiet plain text,
+        because picking a book that cannot be scanned is the one mistake this list exists to
+        prevent.</p>
     </div>
 
     <div class="pg-var">
@@ -98,18 +110,30 @@
       <div class="phone"><div class="ios" id="ph-scan-unprep"></div></div>
       <p class="pg-var__why">Scanning is worthless without a transcript, so the book that has none
         says so <b>before the shutter, not after it</b>: the frame carries the reason and the button
-        carries the one thing to do about it. Preparing every book on import would burn an hour of
-        battery for a feature most books never get pointed at.</p>
+        carries the one thing to do about it. This is the state the disc cannot hold — four words
+        do not fit in a 64px circle, which is what the shape axis is for.</p>
+    </div>
+
+    <div class="pg-var">
+      <div class="pg-var__head"><span class="pg-var__name">The model is missing</span></div>
+      <div class="phone"><div class="ios" id="ph-scan-model"></div></div>
+      <p class="pg-var__why">Preparing a book needs a 460&nbsp;MB speech model that arrives once
+        per install, so on a fresh phone <b>that is the real first step</b> and the button says so
+        instead of promising a preparation it cannot start. The sheet asks once, and it is honest
+        about the two things that hurt: it downloads only while the app is open, and there is
+        <b>no pause</b> &mdash; the download cannot resume, so the second control is a stop that
+        admits the next one starts at zero. When it lands the sheet closes itself and the book the
+        tap was about starts preparing: the user already asked.</p>
     </div>
 
     <div class="pg-var">
       <div class="pg-var__head"><span class="pg-var__name">Preparing</span></div>
       <div class="phone"><div class="ios" id="ph-scan-prep"></div></div>
       <p class="pg-var__why">This is the one state that <b>earns a number</b>. Transcription walks
-        the audio start to end and genuinely knows how far it got, so the button's arc is the
-        fraction and the number stands in the middle of it. The same footprint as the shutter, doing
-        the honest version of the same job. It runs behind playback, which the frame says out loud
-        so nobody sits and watches it.</p>
+        the audio start to end and genuinely knows how far it got, so the loader inside the fill is
+        the fraction rather than a turning arc. Same footprint, same fill, doing the honest version
+        of the same job. It runs behind playback, which the frame says out loud so nobody sits and
+        watches it.</p>
     </div>
 
   </div>
@@ -122,52 +146,62 @@ placeholder cover art, not real library contents.</p>
 
 <script src="app.js"></script>
 <script>
-AB.chrome('scan.html', 'Scan — one skeleton, five states');
-AB.mountOne('ph-scan-idle',    { tab: 'scan', book: 'kan' });
-AB.mountOne('ph-scan-reading', { tab: 'scan', book: 'kan', scan: 'reading', shot: true });
-AB.mountOne('ph-scan-match',   { tab: 'scan', book: 'kan', scan: 'match', shot: true });
-AB.mountOne('ph-scan-sel',     { tab: 'scan', book: 'kan', sel: true });
-AB.mountOne('ph-scan-nomatch', { tab: 'scan', book: 'kan', scan: 'nomatch', shot: true });
-AB.mountOne('ph-scan-unprep',  { tab: 'scan', book: 'kan', prep: 0 });
-AB.mountOne('ph-scan-prep',    { tab: 'scan', book: 'kan', prep: 0.38, scan: 'preparing' });
+AB.chrome('scan.html', 'Scan — one skeleton, nine states');
+var PH = [];
+PH.push(AB.mountOne('ph-scan-idle',      { tab: 'scan', book: 'kan' }));
+PH.push(AB.mountOne('ph-scan-reading',   { tab: 'scan', book: 'kan', scan: 'reading', shot: true }));
+PH.push(AB.mountOne('ph-scan-searching', { tab: 'scan', book: 'kan', scan: 'searching', shot: true }));
+PH.push(AB.mountOne('ph-scan-match',     { tab: 'scan', book: 'kan', scan: 'match', shot: true }));
+PH.push(AB.mountOne('ph-scan-sel',       { tab: 'scan', book: 'kan', sel: true }));
+PH.push(AB.mountOne('ph-scan-nomatch',   { tab: 'scan', book: 'kan', scan: 'nomatch', shot: true }));
+PH.push(AB.mountOne('ph-scan-unprep',    { tab: 'scan', book: 'kan', prep: 0 }));
+PH.push(AB.mountOne('ph-scan-prep',      { tab: 'scan', book: 'kan', prep: 0.38, scan: 'preparing' }));
+PH.push(AB.mountOne('ph-scan-model',     { tab: 'scan', book: 'kan', prep: 0, model: 'missing', sheet: 'model' }));
 
-/* The skeleton is settled: one fixed line, one fixed frame, one button that
-   carries the state, and the four brackets. What is open is what the button
-   draws while it works, where the frame puts what it has to say, and how the
-   book list admits that a book cannot be scanned yet. The rail drives all
-   seven phones at once, so a choice can be judged in every state it touches. */
+/* Settled: the skeleton, the four brackets, the filled button in every state
+   with its loader inside the fill, text centred in the frame, and the drum as
+   the book selector. What is open is the button's shape — a circle cannot
+   hold "Prepare this book" — and where the book line stands, which is the one
+   thing it may not do floating over the frame. The rail drives all nine
+   phones at once, so a choice can be judged in every state it touches. */
 AB.rail({
   mount: 'rail-scan',
   title: 'Scan — what is still open',
-  sub: 'The skeleton is settled: the line, the frame with its four brackets, and one button that carries the state. Every choice here applies to all seven phones at once.',
+  sub: 'Settled: one skeleton, the four brackets, a filled button in every state with the loader inside the fill, and the drum as the book selector. Two things are open, and both apply to all nine phones at once. The third axis is not open at all — it is the speech model\u2019s state, put here so the once-per-install path can be walked.',
   axes: [
-    { id: 'i', label: 'The button while it works', options: [
-      { v: 'ring',  t: 'The disc hollows to a ring',
-        d: 'the accent arc reads on the dark ground and the number sits inside it — the key stops looking pressable, which is the point' },
-      { v: 'disc',  t: 'The disc stays filled, arc cut into it',
-        d: 'the button never loses its weight — a dark arc on green is a quieter signal than a green arc on black' },
-      { v: 'still', t: 'The disc simply dims, no arc',
-        d: 'nothing invented, nothing spinning — a frozen screen and no sign anything is happening' } ] },
-    { id: 'j', label: 'Where the frame puts what it says', options: [
-      { v: 'centre', t: 'Centred in the box',
-        d: 'the result owns the frame it replaced — a one-line failure floats in the middle of a large empty box' },
-      { v: 'top',    t: 'From the top down',
-        d: 'the quote starts where the page started, so long and short results begin in the same place' },
-      { v: 'bottom', t: 'Against the bottom',
-        d: 'the text sits nearest the button that acts on it — and hangs away from the top of the frame' } ] },
-    { id: 'k', label: 'How the list says a book is ready', options: [
-      { v: 'both', t: '"ready" and "not prepared"',
-        d: 'every row states its own case, no inference — the word "ready" is repeated down a list where it is the normal case' },
-      { v: 'lack', t: 'Only the ones that are not',
-        d: 'the list stays quiet and only the exception speaks — silence has to be read as good news' },
-      { v: 'dim',  t: 'No words: the unready rows go quiet',
-        d: 'the lightest possible mark — colour alone, which says something is different but not what' } ] }
+    { id: 's', label: 'The shape of the button', options: [
+      { v: 'disc', t: 'disc — the filled circle',
+        d: 'the shutter’s own shape, and the same 64px disc as the play key — words barely fit and "Prepare this book" does not fit at all' },
+      { v: 'bar',  t: 'bar — a full-width filled bar',
+        d: 'the tab capsule’s corner radius and the mini-player accessory’s proportions, so it reads as of a piece with the glass — a shutter is no longer a shutter shape' } ] },
+    { id: 'm', label: 'The speech model on this device', options: [
+      { v: 'ready',       t: 'ready — the model is here',
+        d: 'the state every install ends in and stays in: the button goes straight to "Prepare this book"' },
+      { v: 'missing',     t: 'missing — a fresh install',
+        d: 'preparing cannot start, so the button names the download instead and the sheet asks once' },
+      { v: 'downloading', t: 'downloading — it is running',
+        d: 'the sheet counts it out and cannot be tapped away; the scan key under it shows the same percent' },
+      { v: 'failed',      t: 'failed — it did not arrive',
+        d: 'the sheet says what went wrong and offers the retry; nothing else on the screen changes' } ] },
+    { id: 'p', label: 'Where the "Point at a page of …" line sits', options: [
+      { v: 'linein',    t: 'in — inside the frame',
+        d: 'costs no row of its own and stands where the eye already is — it shares the frame with the drum and with whatever the frame has to say' },
+      { v: 'lineunder', t: 'under — beneath the frame',
+        d: 'a line of its own, reading straight into the button under it — takes 44px off the frame' },
+      { v: 'linebar',   t: 'bar — just above the tab bar',
+        d: 'furthest from the frame it describes, and it puts a row between the button and the glass, so the button is no longer centred on the frame-to-tab-bar gap' } ] }
   ],
-  rec:  { i: 'ring', j: 'centre', k: 'both' },
+  rec:  { s: 'bar', m: 'ready', p: 'linein' },
   why: {
-    i: 'working is not pressable, and the fraction needs a middle to stand in',
-    j: 'the result takes the place the page had',
-    k: 'the one mistake this list prevents is worth two plain words'
+    s: 'one shape has to carry every label this screen has, and only one of them does',
+    m: 'the settled state; the other three are the once-per-install path, walkable here',
+    p: 'the line belongs to the frame, and inside it costs no vertical room'
+  },
+  /* m is not an open question, it is app state: it cannot be set in CSS, so
+     the rail hands it to the phones. The phone that is mounted in a model
+     state of its own keeps it — it is the variant for that state. */
+  onPick: function (V) {
+    PH.forEach(function (ph) { if (!ph.def.model) ph.setModel(V.m); });
   },
   note: 'The mix is in the URL. An unknown token in a link falls back to the suggested value for that axis.'
 });

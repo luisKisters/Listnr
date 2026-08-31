@@ -216,3 +216,43 @@ in `docs/TESTFLIGHT.md` gains the real-camera pass.
    before reaching for anything cleverer.
 5. **`tokenTimings` is optional.** If a config returns nil timings the feature is dead in the
    water — assert it early, in step 0, not in step 6.
+
+---
+
+## Addendum — owner decisions, evening of 2026-08-24
+
+Binding, same rank as the decisions at the top.
+
+**A1 · Selector button reacts immediately.** In `docs/mockups/app.js` (`scanScreen`, the
+`st.sel` branch, currently line ~1000) the button under the drum is always a shutter. Change:
+when the settled row is a book without a transcript, the button reads **"Prepare this book"**
+right away — tapping it starts preparing and dismisses the drum. Only a transcribed book keeps
+the shutter while the drum is up. The app's Scan selector must behave identically. Mockup first,
+then app; the mockup stays the authority.
+
+**A2 · Model-download screen before first use.** Before any transcription starts, if the ASR
+model is not on disk yet the Scan tab presents a sheet/screen that says the audio AI model needs
+to be downloaded — with an animated indicator while downloading and an honest error state when
+offline. If the model is already present it must be detected and the screen never appears. Built
+from `kit.css` tokens; no new visual language. Detection lives behind one function so tests can
+stub both answers.
+
+## Execution protocol — ox alpha agents (2026-08-24)
+
+All implementation is done by `opencode/x-preview-f-free` agents via `opencode run --auto`.
+The orchestrator (main session) only plans, verifies through the Xcode MCP bridge
+(build / preview / targeted tests), reviews diffs against the mockup, and routes failures back.
+Agents do not commit. One agent per stage, sequential; a stage ships only when its validation
+is green in the orchestrator's own Xcode-MCP check.
+
+| Stage | Plan steps | Acceptance |
+|---|---|---|
+| 1 | 0 + 1 | FluidAudio resolves; smoke test passes or skips loudly offline; transcript round-trips; `hasTranscript` reflects disk |
+| 2 | 2 + 3 | Chunked transcription matches whole-file within 0.2 s on the fixture; matcher unit tests all green incl. no-match cases |
+| 3 | 4 | OCR test over rendered page image passes above word threshold |
+| 4 | 5 + A1 + A2 | All eight mockup states live; selector tweak per A1; model screen per A2 with stubbed detection; camera usage string set |
+| 5 | 6 + 7 | Jump seeks + switches tab; injected-image E2E lands within seconds of truth using real library files from `~/Documents/audiobooks`; full suite green |
+
+Every agent prompt: read `AGENTS.md`, this plan, `docs/DESIGN.md`, the mockup sources;
+YAGNI; no comments; no emoji; tests written with the code they prove; call an xcode MCP tool
+early to confirm the bridge; finish with `scripts/verify.sh`.

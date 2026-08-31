@@ -1,4 +1,8 @@
 name: Listnr
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio
+    minorVersion: 0.15.6
 options:
   bundleIdPrefix: com.luisKisters
   deploymentTarget:
@@ -33,6 +37,9 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [audio]
+        NSCameraUsageDescription: Listnr reads the page in front of the camera to find that spot in the audiobook.
+    dependencies:
+      - package: FluidAudio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.luisKisters.Listnr
@@ -49,6 +56,7 @@ targets:
         buildPhase: resources
     dependencies:
       - target: Listnr
+      - package: FluidAudio
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

@@ -69,9 +69,7 @@ struct RootView: View {
                     line: "The reader is not built yet — it arrives with the paired EPUB.")
             }
             Tab("Scan", systemImage: "viewfinder", value: AppModel.Tab.scan) {
-                UnderConstructionView(
-                    title: "Scan",
-                    line: "Scan-to-sync is not built yet — it arrives after notes.")
+                ScanView()
             }
         }
     }

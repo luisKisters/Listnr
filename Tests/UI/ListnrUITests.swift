@@ -69,7 +69,8 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["The reader is not built yet — it arrives with the paired EPUB."]
             .waitForExistence(timeout: 5))
         tabBar.buttons["Scan"].tap()
-        XCTAssertTrue(app.staticTexts["Scan-to-sync is not built yet — it arrives after notes."]
+        XCTAssertTrue(app.staticTexts[
+            "A page can only be matched against a transcript, and this book has none yet."]
             .waitForExistence(timeout: 5))
         tabBar.buttons["Library"].tap()
         XCTAssertTrue(app.staticTexts["Library"].waitForExistence(timeout: 5))
@@ -224,5 +225,40 @@ final class ListnrUITests: XCTestCase {
         app.buttons["New note"].tap()
         XCTAssertTrue(app.staticTexts["Rocky speaks in exclamation marks"].waitForExistence(timeout: 6))
         app.buttons["Cancel"].tap()
+    }
+
+    // MARK: scan, end to end
+
+    /// Step 7. `-scanfixture` injects a fixed page image and a fixed transcript,
+    /// so the real OCR and the real matcher run without a camera.
+    func testScanJumpsToTheMatchedPosition() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-mockengine", "-scanfixture", "-tab", "scan"]
+        app.launch()
+
+        let shutter = app.buttons["Read the page in front of the camera"]
+        XCTAssertTrue(shutter.waitForExistence(timeout: 15), "the injected page must arm the shutter")
+        shutter.tap()
+
+        let jump = button(app, startingWith: "Jump to ")
+        XCTAssertTrue(jump.waitForExistence(timeout: 40),
+                      "the injected page must match the injected transcript")
+        jump.tap()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.buttons["Audiobook"].waitForExistence(timeout: 6))
+        XCTAssertTrue(tabBar.buttons["Audiobook"].isSelected, "the jump must land on the player")
+
+        let clock = app.staticTexts.matching(
+            NSPredicate(format: "label MATCHES %@", "^[0-9]+:[0-9]{2}:[0-9]{2}$")).firstMatch
+        XCTAssertTrue(clock.waitForExistence(timeout: 6), "the player clock is missing")
+        XCTAssertEqual(seconds(clock.label), 18.4, accuracy: 2,
+                       "the engine must land within two seconds of the injected truth")
+    }
+
+    private func seconds(_ clock: String) -> Double {
+        let parts = clock.split(separator: ":").compactMap { Double($0) }
+        guard parts.count == 3 else { return -1 }
+        return parts[0] * 3600 + parts[1] * 60 + parts[2]
     }
 }
