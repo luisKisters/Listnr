@@ -1,5 +1,22 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "xcode_*": "allow",
+    "bash": {
+      "xcodebuild *": "allow",
+      "xcodebuild": "allow",
+      "xcrun *": "allow",
+      "xcodegen *": "allow",
+      "xcodegen": "allow",
+      "swiftlint *": "allow",
+      "swiftlint": "allow",
+      "scripts/test.sh *": "allow",
+      "scripts/test.sh": "allow",
+      "scripts/verify.sh *": "allow",
+      "scripts/verify.sh": "allow",
+      "export DEVELOPER_DIR=*": "allow"
+    }
+  },
   "mcp": {
     "xcode": {
       "type": "local",

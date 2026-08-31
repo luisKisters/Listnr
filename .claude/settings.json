@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__xcode",
+      "Bash(xcodebuild:*)",
+      "Bash(xcodebuild)",
+      "Bash(xcrun:*)",
+      "Bash(xcodegen:*)",
+      "Bash(xcodegen)",
+      "Bash(swiftlint:*)",
+      "Bash(swiftlint)",
+      "Bash(scripts/test.sh:*)",
+      "Bash(scripts/test.sh)",
+      "Bash(scripts/verify.sh:*)",
+      "Bash(scripts/verify.sh)",
+      "Bash(export DEVELOPER_DIR:*)"
+    ]
+  },
+  "enabledMcpjsonServers": ["xcode"]
+}
