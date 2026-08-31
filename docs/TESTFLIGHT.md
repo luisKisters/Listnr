@@ -78,6 +78,57 @@ you tick it.
 - [ ] Force-quit and relaunch: position, folder and notes survive; the rescan adds a newly
       copied M4B without another picker.  Date: ______
 
+### Real-camera scan pass
+
+The simulator has no camera, so the UI suite injects a fixed page image
+(`-scanfixture`). Only a phone proves the lens. Do this once per device build.
+
+### The speech-model download
+
+460 MB, once per install. It rides a continued-processing task, so it keeps
+going when the phone locks. The only way to prove it is to walk it on a phone
+that does not have it yet. Delete the app first — that takes the model with it.
+
+- [ ] Scan tab, a book with no transcript, model not on disk: the button reads
+      "Download the model", not "Prepare this book". Tap it — the sheet says it downloads
+      once and stays, even when the phone locks.  Date: ______
+- [ ] Tap Download: the button itself fills — the done part darker, the label reads
+      "Downloading · N%". A tap outside the sheet does nothing.  Date: ______
+- [ ] Lock the phone: within seconds the lock screen shows the system pill
+      "Downloading speech model" with a progress bar and a cancel. Leave it locked a
+      minute, unlock: the percentage advanced. If no pill ever appears, the phone
+      refused the task — the app then says "keep Listnr open" and this is the finding
+      to report.  Date: ______
+- [ ] Tap Stop mid-download, then Download again: it restarts at 0 per cent.  Date: ______
+- [ ] Let it finish: the sheet closes itself and the book that was tapped starts
+      preparing without a second tap.  Date: ______
+- [ ] Turn Wi-Fi and cellular off, tap Download: the sheet says the model could not be
+      downloaded and offers "Try again".  Date: ______
+
+### Real-camera scan pass, continued
+
+- [ ] Scan tab with a book that has no transcript and the model already on disk: it says
+      so and offers "Prepare this book", with no sheet.  Date: ______
+- [ ] Tap "Prepare this book", lock the phone: the pill reads "Preparing <title>" and
+      its bar advances while locked.  Date: ______
+- [ ] Cancel from the pill, reopen Listnr: preparation resumes by itself from the saved
+      percentage, never from zero.  Date: ______
+- [ ] Stop a preparation halfway, plug the phone in overnight: next morning the
+      percentage is higher or the book is prepared (the overnight fallback).  Date: ______
+- [ ] Preparation runs in the background: leave the tab, play the book, come back. The
+      percentage kept climbing and playback never stuttered.  Date: ______
+- [ ] With the transcript ready: point the camera at a page of the paper book, tap the
+      shutter. The frame freezes, the recognised words are quoted back with a timestamp
+      and a chapter.  Date: ______
+- [ ] "Jump here": the Audiobook tab opens at that timestamp, and it is the right spot
+      in the narration — listen for ten seconds to be sure.  Date: ______
+- [ ] "Not this one": back to the viewfinder, and a second shutter tap works without
+      re-aiming from scratch.  Date: ______
+- [ ] A page from a different book, and a page of the Hörspiel edition: both must say
+      "No match in this book" rather than guessing.  Date: ______
+- [ ] Camera permission denied in Settings: the tab says the camera is unavailable and
+      the shutter is disabled — never inert without a reason.  Date: ______
+
 **Rule:** any failing item goes back to its owning step (5, 6 or 7) in
 `docs/plans/2026-08-22-listnr-v1.md`, never into a workaround in this document.
 

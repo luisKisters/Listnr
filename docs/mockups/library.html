@@ -23,12 +23,17 @@
     ebook-only title opens the reader, which is under construction and says so. The
     <strong>+</strong> on the right rail imports from Files: pick an audiobook or an ebook, the file is
     read, and the metadata it carries is what you confirm before it joins the list. Turn the guides on in
-    the bar below: one inset, one cover column, one tab-bar line.
+    the bar below: one inset, one cover column, and the glass tab bar on the same two rails.
   </p>
 </div>
 
-<div class="pg-one">
-  <div class="phone"><div class="ios" id="ph-library"></div></div>
+<div class="pg-two">
+  <div class="pg-two__main">
+    <div class="pg-one" style="margin-top:0">
+      <div class="phone"><div class="ios" id="ph-library"></div></div>
+    </div>
+  </div>
+  <aside class="pg-two__rail" id="rail-library"></aside>
 </div>
 
 <p class="colophon">Design mockup · sample titles and placeholder cover art, not real library contents.</p>
@@ -37,6 +42,52 @@
 <script>
 AB.chrome('library.html', 'Library — locked');
 AB.mountOne('ph-library', { tab: 'library' });
+
+/* The four things this screen still has open. Variant B itself is locked and
+   is not on the rail; neither is the progress band inside the cover edge. */
+AB.rail({
+  mount: 'rail-library',
+  title: 'Library — what is still open',
+  sub: 'Four choices this screen has not made. Variant B, the progress band and the glass tab bar are locked and are not here.',
+  axes: [
+    { id: 'a', label: 'The second line of a row', options: [
+      { v: 'stack', t: 'Author, then meta under it',
+        d: 'three lines, easiest to scan — costs vertical room, so fewer books fit a screen' },
+      { v: 'inline', t: 'Author left, meta right',
+        d: 'two lines, one more book per screen — the meta column shortens long author names' },
+      { v: 'hide',  t: 'Author only',
+        d: 'quietest row there is — the time left is then only visible once you open the book' } ] },
+    { id: 'b', label: 'Row density', options: [
+      { v: 'air',   t: '64px cover, s3 padding',
+        d: 'the rows breathe, as the design rule asks — about six books on a screen' },
+      { v: 'tight', t: '56px cover, s2 padding',
+        d: 'eight books on a screen — cover art gets small and the list starts to read as a table' },
+      { v: 'wide',  t: '72px cover, s4 padding',
+        d: 'the art carries the row — five books, and scrolling becomes the main gesture' } ] },
+    { id: 'c', label: 'When a filter matches nothing', options: [
+      { v: 'line',  t: 'One quiet line',
+        d: 'says what happened and nothing else — leaves the reader to find the filter again' },
+      { v: 'clear', t: 'The line plus a way out',
+        d: 'one text action clears the filter — costs one accent-weight word on an empty screen' },
+      { v: 'mute',  t: 'Nothing at all',
+        d: 'the list is simply empty — cheapest, and reads as a bug the first time it happens' } ] },
+    { id: 'd', label: 'How the section headers read', options: [
+      { v: 'caps',  t: 'Small uppercase',
+        d: 'reads as structure, not as content — three shouted words on a screen whose rule is quiet' },
+      { v: 'plain', t: 'Sentence case, quiet ink',
+        d: 'the headers stop competing with the titles under them — and stop being obviously headers' },
+      { v: 'none',  t: 'No headers at all',
+        d: 'the shortest list there is — the two resume rows then have nothing saying what they are' } ] }
+  ],
+  rec:  { a: 'stack', b: 'air', c: 'clear', d: 'caps' },
+  why: {
+    a: 'the meta line is the reason to open a book',
+    b: 'the design rule says rows breathe',
+    c: 'a dead end is worse than one extra word',
+    d: 'a resume row without its word is a mystery row'
+  },
+  note: 'The mix is in the URL. An unknown token in a link falls back to the suggested value for that axis.'
+});
 </script>
 </body>
 </html>

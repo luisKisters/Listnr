@@ -34,3 +34,14 @@ Checked before re-proposing anything below.
   file). So the cost is the first read of the bytes off disk, on a volume that is 93 % full, not
   anything the indexer does. No optimisation is warranted in the indexer. If the first import ever
   needs to feel faster, the lever is progress reporting per file, not parsing.
+
+## Read-along (requested 2026-08-24)
+
+Owner wants a **read-along** mode: the text and the audio move together, the way an ebook and its
+narration do when they are aligned. Same transcript the scan feature builds, used continuously
+instead of once — the word being spoken is the word being highlighted.
+
+Not scoped yet. It depends on two things that do not exist: the transcript
+(`docs/plans/2026-08-24-scan-to-position.md`) and the EPUB reader. Once both land, read-along is
+mostly a matter of driving a highlight from the player's position through the same alignment the
+matcher already computes, so it should be built on top of them rather than beside them.

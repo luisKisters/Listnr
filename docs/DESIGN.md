@@ -1,6 +1,6 @@
 ---
 name: Listnr
-description: Dark-first iOS audiobook player. Near-black ground, white ink ramp, one purple accent, muted per-book cover tones. Calm groups, generous spacing, nothing decorative.
+description: Dark-first iOS audiobook player. Near-black ground, white ink ramp, one green accent, muted per-book cover tones. Calm groups, generous spacing, nothing decorative.
 ---
 # Design
 
@@ -8,7 +8,7 @@ The mockups in `docs/mockups/` are the visual authority. This file states the ru
 
 ## Visual system
 
-- Ground: near-black (#050505 family). Ink: white ramp. Accent: purple #8B5CF6, actions only. Per-book muted cover tones.
+- Ground: near-black (#050505 family). Ink: white ramp. Accent: green #2BFF3E, actions only. Per-book muted cover tones.
 - Type: SF Pro only. SF Mono for machine values (times). No bundled fonts.
 - Layout: content inset on both rails; spacing tokens s1–s9 from `docs/mockups/kit.css`; nothing touches the tab bar.
 - No badges, caption labels, or emoji. Quiet text beats chips.

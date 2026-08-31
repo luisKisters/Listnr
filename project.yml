@@ -1,4 +1,8 @@
 name: Listnr
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio
+    minorVersion: 0.15.6
 options:
   bundleIdPrefix: com.luisKisters
   deploymentTarget:
@@ -9,6 +13,7 @@ settings:
     SWIFT_VERSION: "6.0"
     TARGETED_DEVICE_FAMILY: "1"
     CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 4C8444267Z
     GENERATE_INFOPLIST_FILE: NO
     # Xcode 26 "Update to recommended settings" — set here so xcodegen emits them
     # and the modal never blocks the IDE (it also blocks the xcode MCP bridge).
@@ -34,7 +39,13 @@ targets:
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, processing]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.luisKisters.Listnr.transcribe
+          - com.luisKisters.Listnr.transcribe-resume
+        NSCameraUsageDescription: Listnr reads the page in front of the camera to find that spot in the audiobook.
+    dependencies:
+      - package: FluidAudio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.luisKisters.Listnr
@@ -52,6 +63,7 @@ targets:
         buildPhase: resources
     dependencies:
       - target: Listnr
+      - package: FluidAudio
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
