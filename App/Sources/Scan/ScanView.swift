@@ -300,18 +300,35 @@ struct ScanView: View {
 
     // MARK: the button
 
+    @ViewBuilder
     private var key: some View {
-        Button(action: tapKey) {
-            keyLabel
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(Theme.accent, in: Capsule())
-                .foregroundStyle(Theme.onAccent)
-                .opacity(keyDisabled && !isWorking ? 0.3 : 1)
+        if case .working(let fraction?) = keyKind {
+            FillButton(
+                label: workingKeyLabel(fraction),
+                fraction: fraction,
+                done: false,
+                disabled: keyDisabled,
+                action: tapKey)
+                .accessibilityLabel(keyAccessibilityLabel)
+                .padding(.vertical, Theme.s5)
+        } else {
+            Button(action: tapKey) {
+                keyLabel
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Theme.accent, in: Capsule())
+                    .foregroundStyle(Theme.onAccent)
+                    .opacity(keyDisabled && !isWorking ? 0.3 : 1)
+            }
+            .disabled(keyDisabled)
+            .accessibilityLabel(keyAccessibilityLabel)
+            .padding(.vertical, Theme.s5)
         }
-        .disabled(keyDisabled)
-        .accessibilityLabel(keyAccessibilityLabel)
-        .padding(.vertical, Theme.s5)
+    }
+
+    private func workingKeyLabel(_ fraction: Double) -> String {
+        let verb = isDownloadingModel ? "Downloading" : "Preparing"
+        return "\(verb) · \(Int((fraction * 100).rounded()))%"
     }
 
     @ViewBuilder
@@ -320,23 +337,10 @@ struct ScanView: View {
         case .shutter:
             Image(systemName: "text.viewfinder")
                 .font(.system(size: 24, weight: .regular))
-        case .working(let fraction):
-            HStack(spacing: Theme.s2) {
-                if let fraction {
-                    Circle()
-                        .trim(from: 0, to: max(0.01, min(fraction, 1)))
-                        .stroke(Theme.onAccent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 24, height: 24)
-                    Text("\(Int((fraction * 100).rounded()))%")
-                        .font(.system(size: Theme.tSM, weight: .semibold))
-                        .monospacedDigit()
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(Theme.onAccent)
-                }
-            }
+        case .working:
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(Theme.onAccent)
         case .word(let word):
             Text(word)
                 .font(.system(size: Theme.tMD, weight: .semibold))
@@ -522,19 +526,14 @@ struct ModelDownloadSheet: View {
                 .foregroundStyle(Theme.ink2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, Theme.s2)
-            if case .downloading(let fraction) = state {
-                progress(fraction)
-            }
             Spacer(minLength: Theme.s5)
-            Button(action: isDownloading ? stop : start) {
-                Text(word)
-                    .font(.system(size: Theme.tMD, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Theme.accent, in: Capsule())
-                    .foregroundStyle(Theme.onAccent)
-            }
-            .accessibilityLabel(keyAccessibilityLabel)
+            FillButton(
+                label: word,
+                fraction: downloadFraction,
+                done: false,
+                disabled: false,
+                action: isDownloading ? stop : start)
+                .accessibilityLabel(keyAccessibilityLabel)
             // No dead controls: refusing is only offered while there is
             // something to refuse.
             if !isDownloading {
@@ -554,36 +553,19 @@ struct ModelDownloadSheet: View {
         .background(Theme.bg)
     }
 
-    /// The honest fraction, on a hairline. Nothing here moves on its own.
-    private func progress(_ fraction: Double) -> some View {
-        HStack(spacing: Theme.s4) {
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(Theme.line2)
-                    Rectangle()
-                        .fill(Theme.accentInk)
-                        .frame(width: geometry.size.width * max(0, min(fraction, 1)))
-                }
-            }
-            .frame(height: 1)
-            Text("\(Int((fraction * 100).rounded()))%")
-                .font(.system(size: Theme.tSM, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(Theme.ink)
-        }
-        .padding(.top, Theme.s5)
-        .accessibilityElement()
-        .accessibilityLabel("Downloading, \(Int((fraction * 100).rounded())) per cent done")
-    }
-
     private var isDownloading: Bool {
         if case .downloading = state { return true }
         return false
     }
 
+    private var downloadFraction: Double? {
+        if case .downloading(let fraction) = state { return fraction }
+        return nil
+    }
+
     private var word: String {
         switch state {
-        case .downloading: return "Stop"
+        case .downloading(let fraction): return "Downloading · \(Int((fraction * 100).rounded()))%"
         case .failed: return "Try again"
         default: return "Download"
         }

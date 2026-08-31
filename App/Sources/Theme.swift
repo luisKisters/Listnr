@@ -20,6 +20,10 @@ enum Theme {
     static let accentInk = Color(red: 0.361, green: 0.894, blue: 0.420)       // #5ce46b
     static let onAccent = Color(red: 0.012, green: 0.075, blue: 0.024)        // #031306
 
+    /// accent blended 68% with black — kit.css `color-mix(in srgb, var(--accent)
+    /// 68%, #000)`; the fill button's progress overlay (docs/mockups/transcribe.html).
+    static let accentDeep = Color(red: 0.169 * 0.68, green: 1.0 * 0.68, blue: 0.243 * 0.68)
+
     /// The five muted cover tones (kit.css cov-1..cov-5).
     static let coverTones: [Color] = [
         Color(red: 0.082, green: 0.102, blue: 0.082),   // #151a15

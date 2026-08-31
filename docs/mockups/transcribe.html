@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-scheme="1" data-guides="0">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="favicon.svg">
+<title>Listnr — Transcription</title>
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<header class="pg-head"></header>
+
+<div class="pg-intro">
+  <h1>Model download and book transcription</h1>
+  <p>
+    Two long jobs, one control each. <strong>The button is its own progress bar:</strong> the done
+    part of the pill is a darker shade of the accent, the rest stays the plain accent, and the label
+    reads the state and the percent. No separate bar, no spinner.
+  </p>
+  <p>
+    Tap either button to run it. The model is 1.2 GB and takes a few seconds here; the book waits for
+    the model, then transcribes. Switch to scheme 2 in the bottom bar to see it in green.
+  </p>
+</div>
+
+<div class="pg-one">
+  <div class="phone"><div class="ios" id="ph-tx">
+    <div class="notch" aria-hidden="true"></div>
+    <div class="stat" aria-hidden="true"><b>9:41</b></div>
+    <div class="screen tx">
+      <h2 class="tx-h">Transcription</h2>
+      <p class="tx-p">Listnr reads the audio on this phone. Nothing leaves the device.</p>
+
+      <div class="tx-job">
+        <div class="tx-l">Speech model</div>
+        <div class="tx-k">Parakeet · 1.2 GB · once per phone</div>
+        <button class="fill" type="button" id="dl" style="--p:0"><i aria-hidden="true"></i><span>Download model</span></button>
+      </div>
+
+      <div class="tx-job">
+        <div class="tx-l">The Name of the Wind</div>
+        <div class="tx-k">27 h 55 min · about 20 min on this phone</div>
+        <button class="fill" type="button" id="tx" style="--p:0" disabled><i aria-hidden="true"></i><span>Transcribe book</span></button>
+      </div>
+    </div>
+    <div class="homebar" aria-hidden="true"><i></i></div>
+  </div></div>
+</div>
+
+<p class="colophon">Design mockup · sample titles, not real library contents.</p>
+
+<script src="app.js"></script>
+<script>
+AB.chrome('transcribe.html', 'Transcription — fill buttons');
+
+(function () {
+  var dl = document.getElementById('dl'), tx = document.getElementById('tx');
+
+  function run(btn, ms, doing, done, after) {
+    var t0 = performance.now(), label = btn.querySelector('span');
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+    (function step() {
+      var p = Math.min(1, (performance.now() - t0) / ms);
+      btn.style.setProperty('--p', p);
+      label.textContent = doing + ' · ' + Math.round(p * 100) + '%';
+      if (p < 1) return requestAnimationFrame(step);
+      btn.classList.remove('is-busy');
+      btn.classList.add('is-done');
+      label.textContent = done;
+      if (after) after();
+    })();
+  }
+
+  dl.addEventListener('click', function () {
+    run(dl, 4000, 'Downloading', 'Model ready', function () { tx.disabled = false; });
+  });
+  tx.addEventListener('click', function () {
+    run(tx, 7000, 'Transcribing', 'Transcribed');
+  });
+})();
+</script>
+</body>
+</html>

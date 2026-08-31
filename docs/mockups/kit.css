@@ -1007,3 +1007,26 @@ html[data-guides="1"] .guides{display:block;}
 .phone[data-p="lineunder"] .sc-of--under{display:flex;}
 .phone[data-p="linebar"] .sc-of--in{display:none;}
 .phone[data-p="linebar"] .sc-of--bar{display:flex;}
+/* ═══ FILL BUTTONS — download and transcription ═══════════════════════════
+   The button is its own progress bar. `--p` runs 0→1; the done part of the
+   pill is a darker step of the accent, the rest is the plain accent. */
+.tx-h{font-size:var(--t-2xl);font-weight:700;letter-spacing:-.025em;margin-top:var(--s5);}
+.tx-p{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:var(--s2);}
+.tx-job{margin-top:var(--s6);}
+.tx-l{font-size:16px;color:var(--ink);letter-spacing:-.01em;}
+.tx-k{font-size:12px;color:var(--ink-3);margin-top:2px;}
+.ios .fill{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  width:100%;height:48px;margin-top:var(--s3);border-radius:24px;overflow:hidden;
+  background:var(--accent);color:var(--on-accent);font-size:15px;font-weight:600;
+  font-variant-numeric:tabular-nums;text-align:center;
+  transition:opacity 160ms ease,background 180ms linear;
+}
+.ios .fill i{position:absolute;inset:0 auto 0 0;width:calc(var(--p,0)*100%);
+  background:color-mix(in srgb,var(--accent) 68%,#000);}
+.ios .fill span{position:relative;}
+.ios .fill:disabled{cursor:default;}
+.ios .fill:disabled:not(.is-busy):not(.is-done){opacity:.35;}
+.ios .fill.is-done{background:var(--raise-2);color:var(--ink-2);}
+.ios .fill.is-done i{display:none;}
+.ios .fill:not(:disabled):active{opacity:.7;}
