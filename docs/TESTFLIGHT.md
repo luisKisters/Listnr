@@ -78,6 +78,21 @@ you tick it.
 - [ ] Force-quit and relaunch: position, folder and notes survive; the rescan adds a newly
       copied M4B without another picker.  Date: ______
 
+### Background transcription device run
+
+The simulator has no `BGTaskScheduler`, so none of this can be proven before the phone.
+
+- [ ] Import a real M4B, open it, Scan tab → **Download model** → wait for "Model ready" →
+      **Transcribe book**.  Date: ______
+- [ ] Lock the phone immediately. Expect the system progress pill on the lock screen or in the
+      Dynamic Island within seconds.  Date: ______
+- [ ] Leave it locked 5 minutes, then unlock. Expect the button's percentage to have advanced;
+      if the pill was dismissed, expect the job to resume by itself on reopening.  Date: ______
+- [ ] Cancel from the pill once. Expect "Stop" semantics: reopen the app → it resumes from the
+      checkpoint, not from zero.  Date: ______
+- [ ] Plug in overnight with the job stopped. Expect progress next morning (the processing
+      fallback, which needs external power).  Date: ______
+
 **Rule:** any failing item goes back to its owning step (5, 6 or 7) in
 `docs/plans/2026-08-22-listnr-v1.md`, never into a workaround in this document.
 

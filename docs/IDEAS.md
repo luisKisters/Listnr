@@ -34,3 +34,27 @@ Checked before re-proposing anything below.
   file). So the cost is the first read of the bytes off disk, on a volume that is 93 % full, not
   anything the indexer does. No optimisation is warranted in the indexer. If the first import ever
   needs to feel faster, the lever is progress reporting per file, not parsing.
+- **GPU for background transcription** — parked. A `BGContinuedProcessingTask` may request
+  `.gpu` in `requiredResources` only with the `com.apple.developer.background-tasks.continued-processing.gpu`
+  entitlement, which Listnr does not have. Core ML runs `.cpuAndNeuralEngine` instead, and the ANE
+  is available while the phone is locked, so Parakeet has what it needs. Revisit only if ANE
+  throughput turns out to be the limiter on a real book.
+- **Chunk overlap and dedupe for transcription** — dropped, not deferred. Windows are 5 minutes
+  and do not overlap, so a word cut on a boundary costs one bad token per 300 s. The scan matcher
+  is a shingle matcher and tolerates that. Overlap would buy a token and cost a whole
+  deduplication pass; that trade is not worth making.
+- **Deleting a transcript when a book row goes** — nothing to hook. The library never deletes book
+  rows: a vanished file is marked `isMissing` so notes and position survive, and `removeFolder`
+  keeps its books for the same reason. Deleting the transcript on `isMissing` would throw away
+  hours of work every time an external drive is unplugged. `TranscriptStore.remove(bookID:)` exists
+  for whenever real row deletion lands.
+- **Wildcard `BGContinuedProcessingTask` identifiers** — rejected by the OS, not by us. The plan
+  wanted `com.luisKisters.Listnr.transcribe.*` in `BGTaskSchedulerPermittedIdentifiers` so every
+  book could submit `…transcribe.<bookID>`. Measured on iOS 26.5 (simulator, 2026-08-31):
+  `register(forTaskWithIdentifier: "com.luisKisters.Listnr.transcribe.*")` returns **false**, and
+  submitting an identifier with no registered handler kills the app with an Objective-C exception
+  that Swift's `try` cannot catch. The fallback in the plan's step 3 stop rule is what ships: one
+  exact identifier `com.luisKisters.Listnr.transcribe`, and `TranscriptionJob.pendingBookID`
+  carries which book it is for — only one job runs at a time anyway. Revisit if a later iOS
+  actually supports wildcard registration.
+
