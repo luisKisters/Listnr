@@ -16,10 +16,17 @@ settings:
     STRING_CATALOG_GENERATE_SYMBOLS: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
 
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio
+    from: "0.15.6"
+
 targets:
   Listnr:
     type: application
     platform: iOS
+    dependencies:
+      - package: FluidAudio
     sources:
       - path: App/Sources
       - path: App/Resources
@@ -34,7 +41,13 @@ targets:
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIBackgroundModes: [audio]
+        # `processing` is the overnight fallback; `audio` also keeps the app
+        # alive for free while a book plays.
+        UIBackgroundModes: [audio, processing]
+        # Exact identifiers: a wildcard registration is rejected on iOS 26.5.
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.luisKisters.Listnr.transcribe
+          - com.luisKisters.Listnr.transcribe-resume
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.luisKisters.Listnr
@@ -52,6 +65,7 @@ targets:
         buildPhase: resources
     dependencies:
       - target: Listnr
+      - package: FluidAudio
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -76,6 +90,11 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: false
+      # The gate for the real-model ASR smoke test. Empty on a normal run, so
+      # `scripts/test.sh dev` always skips it; `xcodebuild … LISTNR_ASR_SMOKE=1`
+      # passes a build setting that this expands into the test process.
+      environmentVariables:
+        LISTNR_ASR_SMOKE: "$(LISTNR_ASR_SMOKE)"
       targets:
         - ListnrTests
         - ListnrUITests

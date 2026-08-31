@@ -90,4 +90,17 @@ else
   echo "warning: $FFMPEG not found — Fixtures/chapters.m4b left untouched" >&2
 fi
 
+# ---------------------------------------------------------------------------
+# speech.m4a — the ASR smoke-test fixture. The other fixtures are sine tones;
+# a speech recogniser has nothing to recognise in a 300 Hz sine, so the one
+# test that runs the real Parakeet models needs real words. `say` is offline
+# and deterministic, so the fixture is reproducible on any Mac.
+# ---------------------------------------------------------------------------
+say -v Samantha -o Fixtures/speech.aiff \
+  "The quick brown fox jumps over the lazy dog. \
+   Listnr reads the audio on this phone, and nothing leaves the device."
+afconvert -f m4af -d aac -b 48000 Fixtures/speech.aiff Fixtures/speech.m4a
+rm -f Fixtures/speech.aiff
+echo "wrote Fixtures/speech.m4a"
+
 ls -la Fixtures/
