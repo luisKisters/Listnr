@@ -54,7 +54,17 @@ Checked before re-proposing anything below.
   `register(forTaskWithIdentifier: "com.luisKisters.Listnr.transcribe.*")` returns **false**, and
   submitting an identifier with no registered handler kills the app with an Objective-C exception
   that Swift's `try` cannot catch. The fallback in the plan's step 3 stop rule is what ships: one
-  exact identifier `com.luisKisters.Listnr.transcribe`, and `TranscriptionJob.pendingBookID`
+  exact identifier `com.luisKisters.Listnr.transcribe`, and the model's pending-work field
   carries which book it is for — only one job runs at a time anyway. Revisit if a later iOS
   actually supports wildcard registration.
 
+## Read-along (requested 2026-08-24)
+
+Owner wants a **read-along** mode: the text and the audio move together, the way an ebook and its
+narration do when they are aligned. Same transcript the scan feature builds, used continuously
+instead of once — the word being spoken is the word being highlighted.
+
+Not scoped yet. It depends on two things that do not exist: the transcript
+(`docs/plans/2026-08-24-scan-to-position.md`) and the EPUB reader. Once both land, read-along is
+mostly a matter of driving a highlight from the player's position through the same alignment the
+matcher already computes, so it should be built on top of them rather than beside them.

@@ -7,35 +7,24 @@ struct ListnrApp: App {
 
     init() {
         let uiTest = ProcessInfo.processInfo.arguments.contains("-uitest")
-        if uiTest {
-            // A UI run must not inherit transcripts from the run before it.
-            TranscriptStore.directoryOverride = URL(fileURLWithPath: NSTemporaryDirectory())
-                .appendingPathComponent("uitest-transcripts-\(UUID().uuidString)")
-        }
         let store = ListnrStore(inMemory: uiTest)
         let model = AppModel(store: store)
         _model = StateObject(wrappedValue: model)
         Self.registerBackgroundTasks(model: model)
-        // Only after registration: submitting before it would be fatal.
-        model.startTranscriptionIfRequested()
     }
 
-    /// Both handlers are registered here, in `init`, because every identifier
-    /// in `BGTaskSchedulerPermittedIdentifiers` needs one before launch
-    /// finishes. Both are exact identifiers: a wildcard registration is
-    /// rejected on iOS 26.5 (see `docs/IDEAS.md`).
+    /// Both handlers, registered before launch finishes on the main queue, so
+    /// the handlers may touch the main-actor model directly.
     private static func registerBackgroundTasks(model: AppModel) {
-        TranscriptionJob.continuedRegistered = BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: TranscriptionJob.continuedIdentifier, using: nil
+        AppModel.continuedRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: AppModel.continuedTaskID, using: .main
         ) { task in
-            MainActor.assumeIsolated { model.transcription.runPending(task: task) }
+            MainActor.assumeIsolated { model.runPendingBackground(task: task) }
         }
-        TranscriptionJob.resumeRegistered = BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: TranscriptionJob.resumeIdentifier, using: nil
+        AppModel.resumeRegistered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: AppModel.resumeTaskID, using: .main
         ) { task in
-            MainActor.assumeIsolated {
-                model.transcription.runOvernight(task: task, books: model.store.books)
-            }
+            MainActor.assumeIsolated { model.runOvernight(task: task) }
         }
     }
 
@@ -97,11 +86,8 @@ struct RootView: View {
                     title: "Reader",
                     line: "The reader is not built yet — it arrives with the paired EPUB.")
             }
-            // Provisional: the Scan tab shows the Transcription screen until
-            // the real scan-to-position UI lands, because transcription is
-            // what it needs first and the tab otherwise leads nowhere.
             Tab("Scan", systemImage: "viewfinder", value: AppModel.Tab.scan) {
-                TranscriptionView()
+                ScanView()
             }
         }
     }

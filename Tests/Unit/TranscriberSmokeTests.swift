@@ -1,117 +1,115 @@
 import AVFoundation
-import FluidAudio
 import XCTest
-
 @testable import Listnr
+import FluidAudio
 
-/// The only tests that touch the real Parakeet models. They are gated on
-/// `LISTNR_ASR_SMOKE=1` because the first run downloads about 1.2 GB of Core ML
-/// models — that must never happen inside `scripts/test.sh dev` by accident.
-///
-/// Enable them by passing the gate as a build setting; the scheme's test action
-/// expands it into the test process (see `docs/TESTING.md`):
-/// `xcodebuild test … -only-testing:ListnrTests/TranscriberSmokeTests LISTNR_ASR_SMOKE=1`
-///
-/// The fixture is `speech.m4a`, not `chapters.m4b`: the other fixtures are pure
-/// sine tones, and a recogniser has nothing to recognise in a 300 Hz sine.
-///
-/// Measured on the iPhone 17 Pro simulator (Xcode 26, FluidAudio 0.15.6):
-/// see `docs/TESTING.md` for the recorded wall time.
 final class TranscriberSmokeTests: XCTestCase {
-    static let gate = "LISTNR_ASR_SMOKE"
 
-    private func requireGate() throws {
-        guard ProcessInfo.processInfo.environment[Self.gate] == "1" else {
-            throw XCTSkip("set \(Self.gate)=1 to run the real Parakeet models (~1.2 GB download)")
+    private struct ModelDownloadTimedOut: Error {}
+
+    func testParakeetV3TranscribesGermanSpeechWithMonotonicTokenTimings() async throws {
+        let bundle = Bundle(for: Self.self)
+        let url = try XCTUnwrap(
+            bundle.url(forResource: "speech", withExtension: "m4b"),
+            "Fixtures/speech.m4b missing — run scripts/make-fixtures.sh")
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration).seconds
+
+        let samples = try await Self.decode16kMonoFloat(url: url)
+        XCTAssertGreaterThan(samples.count, 16_000, "fixture must hold at least one second of audio")
+
+        let models: AsrModels
+        do {
+            models = try await Self.downloadModelsWithin(.seconds(240))
+        } catch is ModelDownloadTimedOut {
+            throw XCTSkip(
+                "ASR model (Parakeet v3) not downloaded within 240 s — likely offline or a very "
+                    + "slow connection. Skipping loudly instead of hanging or failing.")
+        } catch let error as URLError {
+            throw XCTSkip(
+                "ASR model download needs the network and failed with \(error.code.rawValue) "
+                    + "\(error.code). Skipping rather than failing.")
         }
-    }
 
-    private func fixtureURL() throws -> URL {
-        try XCTUnwrap(
-            Bundle(for: Self.self).url(forResource: "speech", withExtension: "m4a"),
-            "Fixtures/speech.m4a missing — run scripts/make-fixtures.sh")
-    }
+        let manager = AsrManager(config: ASRConfig.default)
+        try await manager.loadModels(models)
 
-    /// Loads the models and proves the two things the whole feature rests on:
-    /// text, and token timings that rise monotonically inside the duration.
-    func testParakeetProducesTextAndTokenTimings() async throws {
-        try requireGate()
-        let url = try fixtureURL()
-        let duration = try await CMTimeGetSeconds(AVURLAsset(url: url).load(.duration))
-
-        let started = Date()
-        let models = try await AsrModels.downloadAndLoad(
-            configuration: AsrModels.defaultConfiguration())
-        let manager = AsrManager(models: models)
-        var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
-        let result = try await manager.transcribe(url, decoderState: &state)
-        let elapsed = Date().timeIntervalSince(started)
+        var decoderState = try TdtDecoderState()
+        let result = try await manager.transcribe(samples, decoderState: &decoderState)
 
         XCTAssertFalse(
             result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            "Parakeet returned no text after \(elapsed) s")
+            "transcription produced no text")
+        let timings = try XCTUnwrap(
+            result.tokenTimings,
+            "tokenTimings is nil — the whole scan feature rests on this field")
+        XCTAssertFalse(timings.isEmpty)
 
-        let timings = try XCTUnwrap(result.tokenTimings, "no tokenTimings — the feature needs them")
-        XCTAssertFalse(timings.isEmpty, "tokenTimings empty — the feature needs them")
-        var previous: TimeInterval = -1
+        for (a, b) in zip(timings, timings.dropFirst()) {
+            XCTAssertTrue(
+                b.startTime >= a.startTime - 0.001,
+                "token timings not monotonic: '\(a.token)'@\(a.startTime) then '\(b.token)'@\(b.startTime)")
+        }
         for timing in timings {
-            XCTAssertGreaterThanOrEqual(timing.startTime, previous, "token timings went backwards")
-            XCTAssertLessThanOrEqual(timing.startTime, duration + 1, "token timing past the file")
-            previous = timing.startTime
-        }
-        XCTAssertFalse(buildWordTimings(from: timings).isEmpty, "no word timings")
-    }
-
-    /// Chunking must not move a word in book time. The whole-file run is the
-    /// reference; a two-window run has to land the same words within 0.2 s.
-    /// If this drifts, fix the offset — never widen the threshold.
-    func testChunkedTimestampsMatchTheWholeFileRun() async throws {
-        try requireGate()
-        let url = try fixtureURL()
-        let duration = try await CMTimeGetSeconds(AVURLAsset(url: url).load(.duration))
-
-        let whole = try await words(url: url, duration: duration, window: duration + 1)
-        let chunked = try await words(url: url, duration: duration, window: duration / 2)
-
-        XCTAssertGreaterThan(whole.count, 3, "the fixture should yield real words")
-
-        // A word cut on a boundary comes back as two bad tokens. That is the
-        // accepted cost of dropping overlap and dedupe — one word per 5 minutes
-        // in the app, which the shingle matcher tolerates. What must not move
-        // is every other word.
-        let reference = uniqueStarts(whole)
-        let measured = uniqueStarts(chunked)
-        var compared = 0
-        for (text, start) in reference {
-            guard let other = measured[text] else { continue }
-            XCTAssertEqual(other, start, accuracy: 0.2, "chunked timestamp drifted at \(text)")
-            compared += 1
-        }
-        XCTAssertGreaterThan(compared, 5, "too few shared words to prove anything")
-    }
-
-    /// Words that occur exactly once, so a match is unambiguous.
-    private func uniqueStarts(_ words: [TranscriptWord]) -> [String: TimeInterval] {
-        var counts: [String: Int] = [:]
-        for word in words { counts[word.text, default: 0] += 1 }
-        return words.reduce(into: [:]) { out, word in
-            if counts[word.text] == 1 { out[word.text] = word.start }
+            XCTAssertTrue(timing.startTime >= -0.5, "token starts before the file begins: \(timing)")
+            XCTAssertTrue(
+                timing.endTime <= duration + 1.0,
+                "token ends after the file ends (\(duration) s): \(timing)")
         }
     }
 
-    private func words(
-        url: URL, duration: TimeInterval, window: TimeInterval
-    ) async throws -> [TranscriptWord] {
-        let transcriber = Transcriber(window: window)
-        let collected = Collector()
-        try await transcriber.transcribe(url: url, duration: duration, from: 0) { words, _ in
-            await collected.append(words)
+    private static func downloadModelsWithin(_ budget: Duration) async throws -> AsrModels {
+        try await withThrowingTaskGroup(of: AsrModels?.self, returning: AsrModels.self) { group in
+            group.addTask {
+                try await AsrModels.downloadAndLoad(version: .v3)
+            }
+            group.addTask {
+                try await Task.sleep(for: budget)
+                return nil
+            }
+            guard let first = try await group.next(), let models = first else {
+                group.cancelAll()
+                while (try? await group.next()) != nil {}
+                throw ModelDownloadTimedOut()
+            }
+            group.cancelAll()
+            while (try? await group.next()) != nil {}
+            return models
         }
-        return await collected.words
     }
 
-    private actor Collector {
-        var words: [TranscriptWord] = []
-        func append(_ more: [TranscriptWord]) { words.append(contentsOf: more) }
+    private static func decode16kMonoFloat(url: URL) async throws -> [Float] {
+        let asset = AVURLAsset(url: url)
+        let tracks = try await asset.loadTracks(withMediaType: .audio)
+        let track = try XCTUnwrap(tracks.first, "fixture has no audio track")
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+            AVSampleRateKey: 16_000,
+            AVNumberOfChannelsKey: 1,
+        ])
+        reader.add(output)
+        guard reader.startReading() else {
+            throw XCTSkip("could not decode fixture audio: \(String(describing: reader.status))")
+        }
+
+        var samples: [Float] = []
+        while let sampleBuffer = output.copyNextSampleBuffer() {
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
+            let length = CMBlockBufferGetDataLength(blockBuffer)
+            var data = Data(count: length)
+            data.withUnsafeMutableBytes { raw in
+                _ = CMBlockBufferCopyDataBytes(
+                    blockBuffer, atOffset: 0, dataLength: length, destination: raw.baseAddress!)
+            }
+            data.withUnsafeBytes { raw in
+                samples.append(contentsOf: raw.bindMemory(to: Float.self))
+            }
+        }
+        return samples
     }
 }

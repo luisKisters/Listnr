@@ -28,14 +28,10 @@ shot() {
 shot 01-library.png library
 shot 02-player.png audiobook
 shot 03-reader-construction.png reader
+shot 04-scan-prepare.png scan
+shot 07-scan-preparing.png scan -preparing
+shot 08-scan-downloading.png scan -modeldownloading
 # the sheets: -sheet opens them on launch (AppModel.init)
 shot 05-import-sheet.png library -sheet import
 shot 06-note-sheet.png audiobook -sheet note
-# The Transcription screen, which lives in the Scan tab until the real Scan tab
-# lands. -faketranscriber swaps the 1.2 GB Parakeet models for the stand-in;
-# -transcribing runs the real start path, so the running shot is a real run.
-shot 07-transcribe-model-missing.png scan -faketranscriber -model missing
-shot 08-transcribe-downloading.png scan -faketranscriber -model downloading
-shot 09-transcribe-running.png scan -faketranscriber -transcribing
-shot 10-transcribe-done.png scan -faketranscriber -model ready -transcribed
 echo "[evidence] done: $(ls artifacts)"

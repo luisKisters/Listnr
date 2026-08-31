@@ -69,49 +69,11 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["The reader is not built yet — it arrives with the paired EPUB."]
             .waitForExistence(timeout: 5))
         tabBar.buttons["Scan"].tap()
-        // Provisional: the Scan tab holds the Transcription screen until the
-        // real scan-to-position UI lands.
-        XCTAssertTrue(app.staticTexts["Transcription"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[
+            "A page can only be matched against a transcript, and this book has none yet."]
+            .waitForExistence(timeout: 5))
         tabBar.buttons["Library"].tap()
         XCTAssertTrue(app.staticTexts["Library"].waitForExistence(timeout: 5))
-    }
-
-    // MARK: transcription
-
-    /// The whole Transcription screen in one pass: the model job runs to
-    /// "Model ready", which unlocks the book job, which runs to "Transcribed".
-    /// `-faketranscriber` swaps the 1.2 GB Parakeet models for the
-    /// deterministic stand-in, exactly as `-mockengine` does for playback.
-    func testTranscriptionScreenRunsBothJobs() {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "-uitest", "-mockengine", "-faketranscriber", "-tab", "scan", "-model", "missing",
-        ]
-        app.launch()
-
-        let download = app.buttons["Download the speech model"]
-        XCTAssertTrue(download.waitForExistence(timeout: 10), "model button missing")
-
-        let transcribe = app.buttons["Transcribe Project Hail Mary"]
-        XCTAssertTrue(transcribe.exists, "book button missing")
-        XCTAssertFalse(transcribe.isEnabled, "the book must wait for the model")
-
-        download.tap()
-        let ready = app.buttons["The speech model is ready"]
-        XCTAssertTrue(ready.waitForExistence(timeout: 15), "model never became ready")
-        XCTAssertTrue(transcribe.isEnabled, "a ready model must unlock the book")
-
-        transcribe.tap()
-        let stop = app.buttons["Stop transcribing Project Hail Mary"]
-        XCTAssertTrue(stop.waitForExistence(timeout: 10), "no running state")
-        XCTAssertTrue(stop.label.isEmpty == false)
-        XCTAssertTrue(
-            app.staticTexts.containing(
-                NSPredicate(format: "label BEGINSWITH %@", "Transcribing")).firstMatch.exists
-                || stop.exists)
-
-        let done = app.buttons["Project Hail Mary is transcribed"]
-        XCTAssertTrue(done.waitForExistence(timeout: 90), "the run never finished")
     }
 
     // MARK: library
@@ -263,5 +225,40 @@ final class ListnrUITests: XCTestCase {
         app.buttons["New note"].tap()
         XCTAssertTrue(app.staticTexts["Rocky speaks in exclamation marks"].waitForExistence(timeout: 6))
         app.buttons["Cancel"].tap()
+    }
+
+    // MARK: scan, end to end
+
+    /// Step 7. `-scanfixture` injects a fixed page image and a fixed transcript,
+    /// so the real OCR and the real matcher run without a camera.
+    func testScanJumpsToTheMatchedPosition() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-mockengine", "-scanfixture", "-tab", "scan"]
+        app.launch()
+
+        let shutter = app.buttons["Read the page in front of the camera"]
+        XCTAssertTrue(shutter.waitForExistence(timeout: 15), "the injected page must arm the shutter")
+        shutter.tap()
+
+        let jump = button(app, startingWith: "Jump to ")
+        XCTAssertTrue(jump.waitForExistence(timeout: 40),
+                      "the injected page must match the injected transcript")
+        jump.tap()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.buttons["Audiobook"].waitForExistence(timeout: 6))
+        XCTAssertTrue(tabBar.buttons["Audiobook"].isSelected, "the jump must land on the player")
+
+        let clock = app.staticTexts.matching(
+            NSPredicate(format: "label MATCHES %@", "^[0-9]+:[0-9]{2}:[0-9]{2}$")).firstMatch
+        XCTAssertTrue(clock.waitForExistence(timeout: 6), "the player clock is missing")
+        XCTAssertEqual(seconds(clock.label), 18.4, accuracy: 2,
+                       "the engine must land within two seconds of the injected truth")
+    }
+
+    private func seconds(_ clock: String) -> Double {
+        let parts = clock.split(separator: ":").compactMap { Double($0) }
+        guard parts.count == 3 else { return -1 }
+        return parts[0] * 3600 + parts[1] * 60 + parts[2]
     }
 }

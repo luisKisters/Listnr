@@ -91,16 +91,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# speech.m4a — the ASR smoke-test fixture. The other fixtures are sine tones;
-# a speech recogniser has nothing to recognise in a 300 Hz sine, so the one
-# test that runs the real Parakeet models needs real words. `say` is offline
-# and deterministic, so the fixture is reproducible on any Mac.
+# speech.m4b — real German speech for the ASR smoke test. The other fixtures
+# are sine waves, which a transcriber must (and does) return no words for.
+# `say` renders the text with the Anna voice; afconvert packages it the same
+# way as the m4a fixtures above.
 # ---------------------------------------------------------------------------
-say -v Samantha -o Fixtures/speech.aiff \
-  "The quick brown fox jumps over the lazy dog. \
-   Listnr reads the audio on this phone, and nothing leaves the device."
-afconvert -f m4af -d aac -b 48000 Fixtures/speech.aiff Fixtures/speech.m4a
-rm -f Fixtures/speech.aiff
-echo "wrote Fixtures/speech.m4a"
+if command -v say >/dev/null && command -v afconvert >/dev/null && say -v Anna hi >/dev/null 2>&1; then
+  aiff="$(mktemp -t listnr-speech).aiff"
+  say -v Anna -o "$aiff" \
+    "Kapitel eins. Der Prolog beginnt am Meer. Die Tiefsee liegt unter dem Wasser, und dann kommt der Kontakt."
+  afconvert -f m4af -d aac -b 48000 "$aiff" Fixtures/speech.m4b
+  rm -f "$aiff"
+  echo "wrote Fixtures/speech.m4b"
+else
+  echo "warning: say/afconvert or the Anna voice not found — Fixtures/speech.m4b left untouched" >&2
+fi
 
 ls -la Fixtures/

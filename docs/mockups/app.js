@@ -12,7 +12,7 @@
   'use strict';
 
   /* ── schemes + guides persistence ───────────────────────────────────────── */
-  var SCHEMES = { '1': { name: 'Black · Purple' }, '2': { name: 'Black · Neon' } };
+  var SCHEMES = { '1': { name: 'Black · Green' }, '2': { name: 'Black · Purple' } };
   var KEY_SCHEME = 'listnr-scheme';
   var KEY_GUIDES = 'listnr-guides';
   var root = document.documentElement;
@@ -41,7 +41,9 @@
     target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="6.2"/><path d="M12 2.6v3.4M12 18v3.4M2.6 12h3.4M18 12h3.4"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>',
     tabScan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5v-3A1.5 1.5 0 0 1 5.5 4h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3"/><path d="M7.6 12h8.8"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4v-3.2L15.7 5.1a2.26 2.26 0 0 1 3.2 3.2L7.8 19.4z"/><path d="m14.4 6.4 3.2 3.2"/></svg>',
-    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>'
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></svg>',
+    shoot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.6v-3A1.6 1.6 0 0 1 5.6 4h3M15.4 4h3A1.6 1.6 0 0 1 20 5.6v3M20 15.4v3a1.6 1.6 0 0 1-1.6 1.6h-3M8.6 20h-3A1.6 1.6 0 0 1 4 18.4v-3"/><path d="M8 10.4h8M8 13.6h5.4"/></svg>'
   };
 
   /* ── the library ────────────────────────────────────────────────────────── */
@@ -60,6 +62,13 @@
       author: 'Frank Schätzing', narrator: 'Frank Glaubrecht', formats: ['audio'],
       dur: 90000, pos: 5892, speed: 1.2, chapters: 46, word: 'Kapitel',
       names: { 1: 'Prolog', 3: 'Vancouver Island', 4: 'Norwegische See' } },
+
+    /* `prep` is how much of the audio has been transcribed: 1 means a scanned
+       page has something to match against, anything less means it has not. */
+    { id: 'kan', tone: 4, seed: 'kaengururebellion', title: 'Die Känguru-Rebellion',
+      author: 'Marc-Uwe Kling', narrator: 'Marc-Uwe Kling', formats: ['audio'],
+      dur: 13980, pos: 4260, speed: 1, chapters: 66, word: 'Kapitel', prep: 1,
+      names: { 1: 'Prolog', 8: 'Der Anschlag', 31: 'Sein und Haben', 66: 'Epilog' } },
 
     { id: 'tde', tone: 3, seed: 'dawnofall', title: 'The Dawn of Everything',
       author: 'Graeber & Wengrow', narrator: 'Mark Williams', formats: ['audio'],
@@ -91,6 +100,20 @@
       lines: ['Emily St. John Mandel', '272 pages · EPUB'],
       title: 'Sea of Tranquility'
     }
+  };
+
+  /* what one scan of a printed page hands back: the text the OCR read, and the
+     second in the audio the fuzzy match put it at. The chapter is not stored —
+     it is derived from the second, the same way the player derives its own. */
+  var SCAN = {
+    text: '„Das Känguru schiebt sich die letzte Schnitte in den Mund und erklärt mit ' +
+      'vollem Beutel, dass Eigentum Diebstahl sei, meine Schnitte also streng genommen nie ' +
+      'mir gehört habe.“',
+    at: 6480,
+    read: 1400,       /* how long the OCR pass is made to take */
+    match: 1100,      /* how long the search through the transcript takes */
+    step: 0.07,       /* transcription gained per background tick */
+    dl: 0.05          /* of the speech model downloaded per tick */
   };
 
   var SPEEDS = [1, 1.2, 1.5, 1.75, 2];
@@ -173,10 +196,13 @@
     ['reader', 'Reader', IC.tabRead],
     ['scan', 'Scan', IC.tabScan]
   ];
+  /* iOS 26 Liquid Glass: a floating capsule on the rails, the tab you are on
+     as a filled pill with its icon and label in the accent. */
   function tabbar(st) {
     return '<nav class="tabbar" aria-label="App tabs">' + TABS.map(function (t) {
-      return '<button type="button" data-act="tab" data-arg="' + t[0] + '" aria-label="' + t[1] +
-        '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' + t[2] + '</button>';
+      return '<button type="button" class="btn btn--key" data-act="tab" data-arg="' + t[0] +
+        '" aria-current="' + (st.tab === t[0] ? 'true' : 'false') + '">' +
+        t[2] + '<span class="tab-l">' + t[1] + '</span></button>';
     }).join('') + '</nav>';
   }
 
@@ -191,7 +217,7 @@
     this.books = JSON.parse(JSON.stringify(BOOKS));
     this.st = {
       tab: this.def.tab || 'library',
-      book: 'phm',            /* last listened  */
+      book: this.def.book || 'phm',   /* last listened  */
       reading: 'sot',         /* last read      */
       filter: 'all',
       q: '',
@@ -204,18 +230,36 @@
       noteText: '',
       noteResume: false,      /* it was playing when it opened */
       imp: null,              /* the import sheet: null, or { kind, phase } */
-      impTimer: null
+      impTimer: null,
+      scan: this.def.scan || 'idle',  /* idle · reading · searching · match · nomatch · preparing */
+      sel: !!this.def.sel,    /* the frame is showing the book list */
+      shot: !!this.def.shot,  /* a scan has been taken in this session */
+      scanTimer: null,
+      /* the speech model, once per install: missing · downloading · failed ·
+         ready. It is app state, not scan state — the scan only reads it. */
+      model: this.def.model || 'ready',
+      modelFrac: 0,
+      modelSheet: this.def.sheet === 'model',
+      modelRise: this.def.sheet === 'model',
+      modelFor: null,         /* the book waiting behind the download */
+      modelTimer: null
     };
     this.timer = null;
+    /* a variant can hand a phone a book that was never transcribed */
+    if (this.def.prep != null) this.book(this.st.book).prep = this.def.prep;
     var self = this;
     host.addEventListener('click', function (e) { self.onClick(e); });
     host.addEventListener('input', function (e) { self.onInput(e); });
     host.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && self.st.note) { e.preventDefault(); return self.closeNote(); }
-      if (e.key === 'Escape' && self.st.imp) { e.preventDefault(); self.closeImport(); }
+      if (e.key === 'Escape' && self.st.imp) { e.preventDefault(); return self.closeImport(); }
+      if (e.key === 'Escape' && self.st.modelSheet && self.st.model !== 'downloading') {
+        e.preventDefault(); self.closeModel();
+      }
     });
     panels.push(this);
     this.paint();
+    this.st.modelRise = false;   /* a sheet rises once, on the way in */
   }
 
   Phone.prototype.book = function (id) {
@@ -343,6 +387,154 @@
     this.closeImport();
   };
 
+  /* ---- scan: point at a page, read it, propose one second ----------------
+     The read has no honest fraction, so it shows none and simply takes the
+     time it takes. Transcription does have one — it knows how far through the
+     audio it is — so that, and only that, counts out loud.                  */
+  Phone.prototype.scanClear = function () {
+    if (this.st.scanTimer) { clearTimeout(this.st.scanTimer); clearInterval(this.st.scanTimer); }
+    this.st.scanTimer = null;
+  };
+  Phone.prototype.scanTo = function (phase) {
+    this.scanClear();
+    this.st.scan = phase;
+    this.st.sel = false;
+    this.paint();
+  };
+  /* the frame's box becomes the drum. Settling on a row picks that book and
+     the drum stays up, the way an iOS wheel does; the close dismisses it.
+     Picking the book that is already there changes nothing, so it must not
+     throw away a transcription that is running for it. */
+  Phone.prototype.scanPick = function (id) {
+    if (!id || id === this.st.book) return this.paint();
+    if (this.st.playing) this.pause();
+    this.scanClear();
+    this.st.book = id;
+    this.st.scan = 'idle';
+    this.st.chaps = false; this.st.sleepOpen = false;
+    this.paint();
+  };
+  /* both outcomes have to be walkable, so the shots alternate: the first one
+     matches, the next one finds nothing. In the app the text decides.
+     Two steps, because they can fail apart: the page is read, then what was
+     read is searched for in the transcript. */
+  Phone.prototype.shoot = function () {
+    this.st.shot = true;             /* the hint has been read; it goes */
+    this.scanTo('reading');
+    this.st.shots = (this.st.shots || 0) + 1;
+    var out = this.st.shots % 2 ? 'match' : 'nomatch';
+    var self = this, quick = false;
+    try { quick = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    this.st.scanTimer = setTimeout(function () {
+      self.scanTo('searching');
+      self.st.scanTimer = setTimeout(function () {
+        self.st.scanTimer = null;
+        self.scanTo(out);
+      }, quick ? 0 : SCAN.match);
+    }, quick ? 0 : SCAN.read);
+  };
+  Phone.prototype.jump = function () {
+    this.scanClear();
+    this.st.scan = 'idle';
+    this.st.tab = 'audiobook';
+    this.seek(SCAN.at);
+  };
+  /* transcription runs behind the app, so it keeps counting while you listen */
+  Phone.prototype.prepare = function () {
+    var b = this.book();
+    this.scanClear();
+    this.st.sel = false;
+    this.st.scan = 'preparing';
+    b.prep = b.prep || 0;
+    var self = this;
+    this.st.scanTimer = setInterval(function () {
+      var bk = self.book();
+      bk.prep = Math.min(1, (bk.prep || 0) + SCAN.step);
+      if (bk.prep >= 1) { bk.prep = 1; return self.scanTo('idle'); }
+      self.paint();
+    }, 900);
+    this.paint();
+  };
+
+  /* ---- the speech model, downloaded once --------------------------------
+     460 MB, once per install. It lives on the phone, not in the scan: the
+     scan only reads it and waits. There is no pause, because the download
+     cannot resume — so the second control is a stop that says so.        */
+  Phone.prototype.modelClear = function () {
+    if (this.st.modelTimer) clearInterval(this.st.modelTimer);
+    this.st.modelTimer = null;
+  };
+  /* the sheet rises once; every repaint after that leaves it standing */
+  Phone.prototype.rise = function () {
+    this.st.modelRise = true;
+    this.paint();
+    this.st.modelRise = false;
+  };
+  Phone.prototype.openModel = function () {
+    this.st.modelSheet = true;
+    this.st.modelFor = this.st.book;   /* the book the tap was about */
+    this.rise();
+  };
+  Phone.prototype.startModel = function () {
+    var st = this.st, self = this;
+    this.modelClear();
+    st.model = 'downloading';
+    st.modelFrac = 0;
+    /* whatever is on screen is what the tap was about */
+    st.modelFor = st.modelFor || st.book;
+    st.modelTimer = setInterval(function () {
+      var s = self.st;
+      s.modelFrac = Math.min(1, s.modelFrac + SCAN.dl);
+      if (s.modelFrac >= 1) return self.modelDone();
+      self.paint();
+    }, 420);
+    this.paint();
+  };
+  /* done: the sheet closes itself and the book that was asked for starts
+     preparing. The user already tapped; asking a second time is a toll. */
+  Phone.prototype.modelDone = function () {
+    var st = this.st, queued = st.modelFor;
+    this.modelClear();
+    st.model = 'ready';
+    st.modelFrac = 1;
+    st.modelSheet = false;
+    st.modelFor = null;
+    if (queued && queued === st.book) return this.prepare();
+    this.paint();
+  };
+  /* stop, named as what it is: the next download starts at zero */
+  Phone.prototype.stopModel = function () {
+    this.modelClear();
+    this.st.model = 'missing';
+    this.st.modelFrac = 0;
+    this.paint();
+  };
+  Phone.prototype.closeModel = function () {
+    this.st.modelSheet = false;
+    this.st.modelFor = null;
+    this.paint();
+  };
+  /* the rail drops a phone straight into any of the four states; the two
+     that only exist inside the sheet bring the sheet with them */
+  Phone.prototype.setModel = function (v) {
+    var st = this.st;
+    if (st.model === v) return;
+    this.modelClear();
+    st.modelFrac = 0;
+    if (v === 'downloading') {
+      st.modelSheet = true;
+      st.modelFor = st.book;
+      st.modelRise = true;
+      this.startModel();
+      st.modelRise = false;
+      return;
+    }
+    st.model = v;
+    st.modelSheet = v === 'failed';
+    st.modelFor = st.modelSheet ? st.book : null;
+    this.rise();
+  };
+
   Phone.prototype.openBook = function (id) {
     var b = this.book(id);
     if (!hasAudio(b)) { this.st.reading = id; this.st.tab = 'reader'; return this.paint(); }
@@ -392,13 +584,38 @@
       return this.closeNote();
     }
     if (a === 'chaps') { st.chaps = !st.chaps; st.sleepOpen = false; return this.paint(); }
-    if (a === 'chapter') { st.chaps = false; return this.seek(+arg * chapLen(b)); }
+    if (a === 'wheel') {
+      var drum = el.closest('.wheel');
+      return this.wheelPick(drum ? drum.getAttribute('data-wheel') : '', arg, true);
+    }
     if (a === 'filter') { st.filter = arg; st.menu = false; return this.paint(); }
     if (a === 'menu') { st.menu = !st.menu; return this.paint(); }
     if (a === 'import') return this.openImport();
     if (a === 'imp-pick') return this.pickFile(arg);
     if (a === 'imp-close') return this.closeImport();
     if (a === 'imp-add') return this.addImport();
+    if (a === 'sc-shoot') return this.shoot();
+    if (a === 'sc-jump') return this.jump();
+    /* the close leaves the list first, and only then the state under it */
+    if (a === 'sc-close') {
+      if (st.sel) { st.sel = false; return this.paint(); }
+      return this.scanTo('idle');
+    }
+    if (a === 'sc-again') return this.scanTo('idle');
+    if (a === 'sc-prep') return this.prepare();
+    if (a === 'sc-model') return this.openModel();
+    if (a === 'md-start') return this.startModel();
+    if (a === 'md-stop') return this.stopModel();
+    if (a === 'md-close') return this.closeModel();
+    if (a === 'sc-sel') { st.sel = !st.sel; return this.paint(); }
+  };
+  /* one drum, two jobs. A tap on a row is a shortcut for scrolling to it, so
+     it does exactly what settling on it does — the chapter drum then closes,
+     because it stands in the artwork's slot and the artwork has to come back. */
+  Phone.prototype.wheelPick = function (kind, arg, tap) {
+    if (kind === 'book') return this.scanPick(arg);
+    if (tap) this.st.chaps = false;
+    return this.seek(+arg * chapLen(this.book()));
   };
   /* search filters without a repaint, so the caret never jumps */
   Phone.prototype.onInput = function (e) {
@@ -410,8 +627,12 @@
     }
     if (!e.target.matches('input[data-search]')) return;
     this.st.q = e.target.value;
-    var keep = {};
-    this.list().forEach(function (b) { keep[b.id] = 1; });
+    var keep = {}, n = 0;
+    this.list().forEach(function (b) { keep[b.id] = 1; n++; });
+    /* nothing left, or the empty line is already standing: the list has to be
+       rebuilt, not just re-hidden, or the screen would go blank without saying
+       so. paint() puts the caret back at the end of the query. */
+    if (!n || this.host.querySelector('.empty')) return this.paint();
     var rows = this.host.querySelectorAll('[data-row]');
     Array.prototype.forEach.call(rows, function (r) {
       r.hidden = !keep[r.getAttribute('data-row')];
@@ -438,7 +659,7 @@
     if (st.tab === 'library') body = libraryScreen(this, st);
     else if (st.tab === 'audiobook') body = playerScreen(this, st);
     else if (st.tab === 'reader') body = underConstruction('The reader is not built yet — it arrives with the paired EPUB.');
-    else body = underConstruction('Scan-to-sync is not built yet — it arrives after notes.');
+    else body = scanScreen(this, st);
 
     this.host.innerHTML =
       '<div class="notch" aria-hidden="true"></div>' +
@@ -490,31 +711,31 @@
     return h + '<i class="h" style="bottom:calc(var(--tab-h) + var(--home-h))"></i></div>';
   };
 
-  /* ---- chapter wheel: settle on a row and playback follows ---------------- */
+  /* ---- the drum: settle on a row and that row is the choice ---------------
+     One binding for both drums. What the drum is and which row it stands on
+     are on the element itself, so nothing here knows about chapters or books. */
   Phone.prototype.bindWheel = function () {
     var wl = this.host.querySelector('.wheel');
     if (!wl) return;
     var self = this, t = null;
-    function highlight(i) {
-      Array.prototype.forEach.call(wl.querySelectorAll('button'), function (btn, j) {
+    var kind = wl.getAttribute('data-wheel');
+    var rows = wl.querySelectorAll('button');
+    var cur = Math.max(0, Math.min(rows.length - 1, +wl.getAttribute('data-cur') || 0));
+    function settle() {
+      var i = Math.max(0, Math.min(rows.length - 1, Math.round(wl.scrollTop / 36)));
+      if (i !== cur) return self.wheelPick(kind, rows[i].getAttribute('data-arg'), false);
+      Array.prototype.forEach.call(rows, function (btn, j) {
         btn.setAttribute('aria-current', j === i ? 'true' : 'false');
       });
-    }
-    function settle() {
-      var b = self.book();
-      var i = Math.max(0, Math.min(b.chapters - 1, Math.round(wl.scrollTop / 36)));
-      if (i !== chapIndex(b)) { self.seek(i * chapLen(b)); return; }
-      highlight(i);
       try { wl.scrollTo({ top: i * 36 }); } catch (e) { wl.scrollTop = i * 36; }
     }
     wl.addEventListener('scroll', function () {
       if (t) clearTimeout(t);
       t = setTimeout(settle, 90);
     }, { passive: true });
-    /* land exactly on the snap point of the playing chapter so CSS snap,
-       the restored scroll offset and the engine state can never disagree */
-    var b0 = this.book();
-    try { wl.scrollTo({ top: chapIndex(b0) * 36 }); } catch (e) { wl.scrollTop = chapIndex(b0) * 36; }
+    /* land exactly on the snap point of the current row so CSS snap, the
+       restored scroll offset and the state can never disagree */
+    try { wl.scrollTo({ top: cur * 36 }); } catch (e) { wl.scrollTop = cur * 36; }
   };
 
   /* ---- scrubber: tap and drag ------------------------------------------- */
@@ -556,7 +777,7 @@
     var on = state(b) !== 'new';
     var cover = '<span class="cover c' + b.tone + '" aria-hidden="true">' + coverHTML(b, 300) +
       (on ? '<span class="inline-p"><i style="width:' + p + '%"></i></span>' : '') + '</span>';
-    return '<button type="button" class="book" data-act="book" data-arg="' + b.id +
+    return '<button type="button" class="btn btn--row book" data-act="book" data-arg="' + b.id +
       '" data-row="' + b.id + '" data-state="' + state(b) + '">' + cover +
       '<span class="book-x">' +
         '<span class="book-t">' + esc(b.title) + '</span>' +
@@ -572,7 +793,7 @@
     var cover = '<span class="cover c' + b.tone + '" aria-hidden="true">' + coverHTML(b, 300) +
       (on ? '<span class="inline-p"><i style="width:' + p + '%"></i></span>' : '') + '</span>';
     return '<div class="sect">' + esc(label) + '</div>' +
-      '<button type="button" class="now" data-act="' + act + '">' + cover +
+      '<button type="button" class="btn btn--row now" data-act="' + act + '">' + cover +
       '<span class="now-x"><span class="now-t">' + esc(b.title) + '</span>' +
       '<span class="now-a">' + esc(b.author) + '</span>' +
       '<span class="now-m"><span>' + esc(left) + '</span><span>' + esc(right) + '</span></span></span>' +
@@ -587,8 +808,9 @@
     return '<div class="pl-id">' +
       '<div class="pl-t">' + esc(b.title) + '</div>' +
       '<div class="pl-a">' + esc(b.author + (b.narrator ? ' · ' + b.narrator : '')) + '</div>' +
-      '<button type="button" class="pl-ch" data-act="chaps" aria-expanded="' +
-        (st.chaps ? 'true' : 'false') + '">' + esc(chapName(b, chapIndex(b))) + '</button>' +
+      '<button type="button" class="btn btn--text pl-ch" data-act="chaps" aria-expanded="' +
+        (st.chaps ? 'true' : 'false') + '"><span>' + esc(chapName(b, chapIndex(b))) + '</span>' +
+        '<i class="cv" aria-hidden="true">' + IC.caret + '</i></button>' +
       '</div>';
   }
 
@@ -605,12 +827,12 @@
 
   function transport(st) {
     return '<div class="transport">' +
-      '<button type="button" class="skip" data-act="prevch" aria-label="Previous chapter">' + IC.prev + '</button>' +
-      '<button type="button" data-act="back15" aria-label="Back 15 seconds">' + IC.back15 + '</button>' +
-      '<button type="button" class="play" data-act="play" aria-label="' + (st.playing ? 'Pause' : 'Play') + '">' +
-      (st.playing ? IC.pause : IC.play) + '</button>' +
-      '<button type="button" data-act="fwd30" aria-label="Forward 30 seconds">' + IC.fwd30 + '</button>' +
-      '<button type="button" class="skip" data-act="nextch" aria-label="Next chapter">' + IC.next + '</button>' +
+      '<button type="button" class="btn btn--key skip" data-act="prevch" aria-label="Previous chapter">' + IC.prev + '</button>' +
+      '<button type="button" class="btn btn--key" data-act="back15" aria-label="Back 15 seconds">' + IC.back15 + '</button>' +
+      '<button type="button" class="btn btn--key btn--fill play" data-act="play" aria-label="' +
+        (st.playing ? 'Pause' : 'Play') + '">' + (st.playing ? IC.pause : IC.play) + '</button>' +
+      '<button type="button" class="btn btn--key" data-act="fwd30" aria-label="Forward 30 seconds">' + IC.fwd30 + '</button>' +
+      '<button type="button" class="btn btn--key skip" data-act="nextch" aria-label="Next chapter">' + IC.next + '</button>' +
       '</div>';
   }
 
@@ -619,9 +841,9 @@
   function utilRow(b, st) {
     var n = notes(b).length;
     return '<div class="util">' +
-      '<button type="button" data-act="speed" aria-label="Playback speed, now ' + b.speed.toFixed(1) + ' times">' +
-        '<span class="u-v">' + b.speed.toFixed(1) + '×</span></button>' +
-      '<button type="button" class="u-note" data-act="note" aria-label="' +
+      '<button type="button" class="btn btn--key btn--wide" data-act="speed" aria-label="Playback speed, now ' +
+        b.speed.toFixed(1) + ' times"><span class="u-v">' + b.speed.toFixed(1) + '×</span></button>' +
+      '<button type="button" class="btn btn--key btn--wide btn--rail-r u-note" data-act="note" aria-label="' +
         (n ? 'Add a note. ' + n + ' saved' : 'Add a note') + '">' +
         (n ? '<span class="n">' + n + '</span>' : '') + IC.pencil + '</button>' +
       '</div>';
@@ -631,10 +853,10 @@
     if (!st.sleepOpen) return '';
     var h = '<div class="inline"><div class="inline__opts">';
     SLEEPS.forEach(function (m) {
-      h += '<button type="button" data-act="sleepset" data-arg="' + m + '" aria-pressed="' +
+      h += '<button type="button" class="btn btn--text" data-act="sleepset" data-arg="' + m + '" aria-pressed="' +
         (st.sleep === m ? 'true' : 'false') + '">' + m + ' min</button>';
     });
-    h += '<button type="button" data-act="sleepset" data-arg="off" aria-pressed="' +
+    h += '<button type="button" class="btn btn--text" data-act="sleepset" data-arg="off" aria-pressed="' +
       (st.sleep ? 'false' : 'true') + '">Off</button>';
     return h + '</div></div>';
   }
@@ -646,7 +868,7 @@
     if (!st.note) return '';
     var list = notes(b);
     var rows = list.map(function (n, i) {
-      return '<button type="button" class="note-row" data-act="note-seek" data-arg="' + i + '">' +
+      return '<button type="button" class="btn btn--row note-row" data-act="note-seek" data-arg="' + i + '">' +
         '<span class="note-t">' + hms(n.t) + '</span>' +
         '<span class="note-x">' + esc(n.text) + '</span></button>';
     }).join('');
@@ -661,8 +883,8 @@
         '<textarea class="note-in" data-note rows="3" aria-label="Note text" ' +
           'spellcheck="false" autocapitalize="sentences"></textarea>' +
         '<div class="note-acts">' +
-          '<button type="button" class="note-cancel" data-act="note-cancel">Cancel</button>' +
-          '<button type="button" class="note-save" data-act="note-save"' +
+          '<button type="button" class="btn btn--text btn--off" data-act="note-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--text btn--go btn--end" data-act="note-save"' +
             (String(st.noteText).trim() ? '' : ' disabled') + '>Save</button>' +
         '</div>' +
         (rows ? '<div class="note-list" data-keep="notes">' + rows + '</div>' : '') +
@@ -679,7 +901,7 @@
     if (im.phase === 'menu') {
       body = '<div class="imp-list">' + ['audio', 'ebook'].map(function (k) {
         var f = IMPORTS[k];
-        return '<button type="button" class="imp-row" data-act="imp-pick" data-arg="' + k + '">' +
+        return '<button type="button" class="btn btn--row imp-row" data-act="imp-pick" data-arg="' + k + '">' +
           '<span class="imp-l">' + esc(f.label) + '</span>' +
           '<span class="imp-k">' + esc(f.kinds) + '</span></button>';
       }).join('') + '</div>';
@@ -689,14 +911,14 @@
     } else if (im.phase === 'dupe') {
       body = '<div class="imp-meta"><p class="imp-note">Already in your library</p></div>' +
         '<div class="imp-acts"><span></span>' +
-        '<button type="button" class="imp-add" data-act="imp-close">Close</button></div>';
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="imp-close">Close</button></div>';
     } else {
       body = '<div class="imp-meta"><p class="imp-t">' + esc(src.title) + '</p>' +
         src.lines.map(function (l) { return '<p class="imp-m">' + esc(l) + '</p>'; }).join('') +
         '</div>' +
         '<div class="imp-acts">' +
-        '<button type="button" class="imp-cancel" data-act="imp-close">Cancel</button>' +
-        '<button type="button" class="imp-add" data-act="imp-add">Add to library</button></div>';
+        '<button type="button" class="btn btn--text btn--off" data-act="imp-close">Cancel</button>' +
+        '<button type="button" class="btn btn--text btn--go btn--end" data-act="imp-add">Add to library</button></div>';
     }
 
     /* the sheet rises once, on the way in; the phases after that change the
@@ -709,15 +931,64 @@
       '</div>';
   }
 
-  /* the chapter wheel: the iOS time-picker drum, in the cover's exact box.
-     Settling on a row seeks it, so artwork and chapters share one slot. */
-  function wheelBox(b) {
-    var cur = chapIndex(b), h = '<div class="wheelbox"><div class="wheel" data-keep="wheel" role="listbox" aria-label="Chapters">';
-    for (var i = 0; i < b.chapters; i++) {
-      h += '<button type="button" role="option" data-act="chapter" data-arg="' + i +
-        '" aria-current="' + (i === cur ? 'true' : 'false') + '">' + esc(chapName(b, i)) + '</button>';
-    }
+  /* THE DRUM: the iOS time-picker wheel. One implementation, two callers —
+     the chapter list in the cover's box, and the book selector in the scan
+     frame's box. A row is { arg, t } and, where a row has something to admit
+     about itself, a quiet `r` on its right end. */
+  /* ---- the model sheet ----------------------------------------------------
+     The speech model is 460 MB and arrives once per install. The note sheet's
+     shell again, with one bar button. There is no pause: FluidAudio cannot
+     resume a download, so a pause would lie — the second control is a stop
+     that admits the next one starts over. While it runs, the scrim is not a
+     dismiss: a tap outside must not throw the download away. */
+  function modelSheet(st) {
+    if (!st.modelSheet) return '';
+    var dl = st.model === 'downloading', failed = st.model === 'failed';
+    var done = Math.round(st.modelFrac * 100);
+    var rest = st.modelRise ? '' : ' sheet--rest';
+    var line = dl
+      ? 'Downloading once. It stays on this device afterwards.'
+      : failed
+        ? 'The model could not be downloaded. Check the connection and try again.'
+        : 'Matching a page needs the speech model on this device. It downloads once ' +
+          'and stays. Keep Listnr open \u2014 it stops when the phone locks.';
+    return '<div class="sheet-scrim' + rest + '"' +
+        (dl ? '' : ' data-act="md-close"') + ' aria-hidden="true"></div>' +
+      '<div class="sheet' + rest + '" role="dialog" aria-modal="true" ' +
+        'aria-label="The audio AI model">' +
+        '<i class="sheet-grab" aria-hidden="true"></i>' +
+        '<p class="md-t">The audio AI model</p>' +
+        '<p class="md-l">' + esc(line) + '</p>' +
+        (dl
+          ? '<div class="md-prog"><span class="md-bar" style="--p:' + done +
+            '"><i></i></span><span class="md-pn">' + done + '%</span></div>'
+          : '') +
+        '<button type="button" class="btn md-key" data-act="' +
+          (dl ? 'md-stop' : 'md-start') + '" aria-label="' +
+          (dl ? 'Stop the download \u2014 the next one starts over'
+              : failed ? 'Try downloading the model again'
+                       : 'Download the audio AI model') + '">' +
+          (dl ? 'Stop' : failed ? 'Try again' : 'Download') + '</button>' +
+        (dl ? '' : '<button type="button" class="btn btn--text md-not" ' +
+          'data-act="md-close" aria-label="Not now">Not now</button>') +
+      '</div>';
+  }
+
+  function wheelBox(kind, rows, cur, label) {
+    var h = '<div class="wheelbox"><div class="wheel" data-keep="wheel" data-wheel="' + kind +
+      '" data-cur="' + cur + '" role="listbox" aria-label="' + esc(label) + '">';
+    rows.forEach(function (r, i) {
+      h += '<button type="button" role="option" data-act="wheel" data-arg="' + esc(r.arg) +
+        '" aria-current="' + (i === cur ? 'true' : 'false') + '">' +
+        '<span class="w-t">' + esc(r.t) + '</span>' +
+        (r.r ? '<span class="w-r">' + esc(r.r) + '</span>' : '') + '</button>';
+    });
     return h + '</div><i class="wheel-sel" aria-hidden="true"></i></div>';
+  }
+  function chapterWheel(b) {
+    var rows = [];
+    for (var i = 0; i < b.chapters; i++) rows.push({ arg: i, t: chapName(b, i) });
+    return wheelBox('chapter', rows, chapIndex(b), 'Chapters');
   }
 
   /* ---- LIBRARY (locked: B) ----------------------------------------------
@@ -730,17 +1001,17 @@
   function libraryScreen(p, st) {
     st.rails = [64];
     var list = p.list();
-    return '<div class="screen">' +
+    return '<div class="screen screen--list">' +
       '<div class="titlerow"><span class="h1">Library</span>' +
         '<span class="titlerow__acts">' +
-        '<button type="button" class="drop" data-act="menu" aria-expanded="' + (st.menu ? 'true' : 'false') + '">' +
-        esc(filterLabel(st)) + IC.caret + '</button>' +
-        '<button type="button" class="add" data-act="import" aria-expanded="' + (st.imp ? 'true' : 'false') +
-        '" aria-label="Import a book">' + IC.plus + '</button>' +
+        '<button type="button" class="btn btn--key btn--wide drop" data-act="menu" aria-expanded="' +
+        (st.menu ? 'true' : 'false') + '">' + esc(filterLabel(st)) + IC.caret + '</button>' +
+        '<button type="button" class="btn btn--key btn--rail-r add" data-act="import" aria-expanded="' +
+        (st.imp ? 'true' : 'false') + '" aria-label="Import a book">' + IC.plus + '</button>' +
         '</span></div>' +
       (st.menu
         ? '<div class="menu">' + FILTERS.map(function (f) {
-            return '<button type="button" data-act="filter" data-arg="' + f.k + '" aria-pressed="' +
+            return '<button type="button" class="btn btn--row" data-act="filter" data-arg="' + f.k + '" aria-pressed="' +
               (st.filter === f.k ? 'true' : 'false') + '">' + f.l +
               (st.filter === f.k ? IC.check : '') + '</button>';
           }).join('') + '</div>'
@@ -752,7 +1023,9 @@
         '<div class="sect">All books</div>' +
         (list.length
           ? list.map(function (b) { return bookRow(b); }).join('')
-          : '<p class="empty">Nothing matches this filter.</p>') +
+          : '<p class="empty">Nothing here matches.' +
+            '<button type="button" class="btn btn--text btn--go empty-act" data-act="filter" ' +
+            'data-arg="all">Show all books</button></p>') +
       '</div></div>' + importSheet(st);
   }
 
@@ -765,22 +1038,180 @@
     var left = st.sleep ? Math.max(1, Math.ceil(st.sleepLeft / 60)) + 'm' : null;
     return '<div class="screen screen--player">' +
       '<div class="pl-top">' +
-        '<button type="button" class="pl-back" data-act="back" aria-label="Back to library">' + IC.down + '</button>' +
+        '<button type="button" class="btn btn--key btn--rail-l pl-back" data-act="back" ' +
+          'aria-label="Back to library">' + IC.down + '</button>' +
         '<span class="pl-top__c">' + esc(formatWord(b)) + '</span>' +
-        '<button type="button" class="pl-sleep" data-act="sleep" aria-expanded="' +
+        '<button type="button" class="btn btn--key btn--wide btn--rail-r pl-sleep" data-act="sleep" aria-expanded="' +
           (st.sleepOpen ? 'true' : 'false') + '" aria-label="' +
           (left ? 'Sleep timer, ' + left + ' left' : 'Sleep timer') + '">' +
           (left ? '<span class="n">' + left + '</span>' : '') + IC.moon + '</button>' +
       '</div>' +
       sleepPicker(st) +
       (st.chaps
-        ? wheelBox(b)
+        ? chapterWheel(b)
         : '<span class="cover pl-cover c' + b.tone + '" aria-hidden="true">' +
           coverHTML(b, 600) + '<span class="scrim"></span></span>') +
       identity(b, st) +
       '<i class="gap"></i>' +
       scrubber(b) + transport(st) + utilRow(b, st) +
       '</div>' + noteSheet(b, st);
+  }
+
+  /* ---- SCAN ---------------------------------------------------------------
+     ONE SKELETON, and the button is the state machine.
+
+       sc-head    44px, the close slot on the right rail — a fixed column
+                  whether a close stands in it or not
+       sc-stage   THE FRAME. Four brackets, and it takes every pixel left over
+                  between the head and the button. It holds the viewfinder, the
+                  frozen page, the result, or the book drum. Everything inside
+                  it is absolutely placed, so no content can change its size.
+       sc-foot    the fixed gap, with THE BUTTON centred in it: shutter ·
+                  working · "Jump here" · "Prepare this book".
+
+     Exactly one box flexes — the frame — so the button's place in the gap is
+     a consequence of the frame's height and not a hand-tuned number.
+
+     Nothing here branches on layout. Every state changes contents only, and
+     the two open axes (the button's shape, where the book line sits) are CSS
+     over markup that is always the same.                                    */
+
+  /* the book line, laid down in all three of the places the axis offers; the
+     CSS shows exactly one of them and the other two have no geometry */
+  function scanLine(b, st, where) {
+    return '<div class="sc-of sc-of--' + where + '"><span class="lead">Point at a page of</span>' +
+      '<button type="button" class="btn btn--text sc-pick" data-act="sc-sel" aria-expanded="' +
+        (st.sel ? 'true' : 'false') + '" aria-label="Book to match against: ' + esc(b.title) + '">' +
+        '<span class="t">' + esc(b.title) + '</span>' + IC.caret + '</button></div>';
+  }
+  /* the frame: the brackets are the frame, whatever is inside it */
+  function scanStage(live, inner) {
+    return '<div class="sc-stage" data-live="' + (live ? 'true' : 'false') + '">' +
+      '<i class="sc-corner tl" aria-hidden="true"></i><i class="sc-corner tr" aria-hidden="true"></i>' +
+      '<i class="sc-corner bl" aria-hidden="true"></i><i class="sc-corner br" aria-hidden="true"></i>' +
+      (inner || '') + '</div>';
+  }
+  /* what the frame says, centred in the frame both ways, always */
+  function scanSays(lines) {
+    return '<div class="sc-in">' + lines.join('') + '</div>';
+  }
+  /* THE BUTTON. One footprint, one filled accent shape, in every state. It is
+     never outlined, never a bare word: while it works the fill stays and the
+     loader is drawn inside it in --on-accent. */
+  function scanKey(inner, act, label, opt) {
+    opt = opt || {};
+    return '<div class="sc-foot"><button type="button" class="btn sc-key' +
+      (opt.work ? ' sc-key--work' : '') + '"' +
+      (act ? ' data-act="' + act + '"' : '') + (opt.off || opt.work ? ' disabled' : '') +
+      ' aria-label="' + esc(label) + '">' + inner + '</button></div>';
+  }
+  function scanShutter(off, label) {
+    return scanKey('<span class="sc-glyph" aria-hidden="true">' + IC.shoot + '</span>',
+      off ? '' : 'sc-shoot', label, { off: off });
+  }
+  /* working, filled: an indeterminate spinner, or the fraction when there
+     honestly is one. Both live inside the fill, in --on-accent. */
+  function scanWork(pct, label) {
+    return scanKey('<span class="sc-work" aria-hidden="true"><i class="sc-spin"' +
+      (pct == null ? '' : ' data-p style="--p:' + pct + '"') + '></i>' +
+      (pct == null ? '' : '<span class="sc-pn">' + pct + '%</span>') + '</span>',
+      '', label, { work: true });
+  }
+
+  /* the first step, said out loud. A book that cannot be prepared until a
+     460 MB download lands must not offer "Prepare this book" — the button
+     names the real next thing instead, and counts the download out. */
+  function scanModelKey(st) {
+    if (st.model === 'ready') return null;
+    if (st.model === 'downloading') {
+      var done = Math.round(st.modelFrac * 100);
+      return scanWork(done, 'Downloading the model, ' + done + ' per cent done');
+    }
+    return scanKey('Download the model', 'sc-model', 'Download the audio AI model');
+  }
+
+  function scanScreen(p, st) {
+    st.rails = [];
+    var b = p.book(), ph = st.scan, ready = b.prep === 1;
+    var live = false, closes = false, inner = '', key;
+
+    if (st.sel) {
+      /* the frame's box becomes the drum — the same wheel the chapters use.
+         Each row admits whether that book can be scanned at all. */
+      closes = true;
+      var rows = p.books.filter(hasAudio).map(function (x) {
+        return { arg: x.id, t: x.title, r: x.prep === 1 ? 'ready' : 'not prepared' };
+      });
+      var at = 0;
+      rows.forEach(function (r, i) { if (r.arg === b.id) at = i; });
+      inner = wheelBox('book', rows, at, 'Book to match against');
+      /* A1: the settled row answers straight away — a book without a
+         transcript turns the button into the prepare it needs. */
+      key = ready
+        ? scanShutter(true, 'Choose the book to match against')
+        : scanModelKey(st)
+          || scanKey('Prepare this book', 'sc-prep', 'Prepare this book for scanning');
+
+    } else if (ph === 'preparing') {
+      /* the one honest fraction in the feature: the button counts it out */
+      var done = Math.round((b.prep || 0) * 100);
+      inner = scanSays(['<p class="sc-line">Listening through the audio once, so a page has ' +
+        'something to match against.</p>',
+        '<p class="sc-prog">' + span(b.dur * (b.prep || 0)) + ' of ' + span(b.dur) + '</p>',
+        '<p class="sc-sub">This keeps running while you listen.</p>']);
+      key = scanWork(done, 'Preparing this book, ' + done + ' per cent done');
+
+    } else if (!ready) {
+      inner = scanSays(['<p class="sc-line">A page can only be matched against a transcript, ' +
+        'and this book has none yet.</p>',
+        '<p class="sc-sub">Preparing runs in the background and takes a while.</p>']);
+      key = scanModelKey(st)
+        || scanKey('Prepare this book', 'sc-prep', 'Prepare this book for scanning');
+
+    } else if (ph === 'reading') {
+      /* the page is frozen and being read; nothing is being looked up yet */
+      inner = scanSays(['<p class="sc-line">Reading the page.</p>']);
+      key = scanWork(null, 'Reading the page');
+
+    } else if (ph === 'searching') {
+      /* the words are in hand — this is the transcript being searched */
+      inner = scanSays(['<p class="sc-line">Looking for those words in the audio.</p>',
+        '<p class="sc-sub">Searching the transcript of ' + esc(b.title) + '.</p>']);
+      key = scanWork(null, 'Searching the transcript');
+
+    } else if (ph === 'match') {
+      closes = true;
+      var i = Math.max(0, Math.min(b.chapters - 1, Math.floor(SCAN.at / chapLen(b))));
+      inner = scanSays(['<p class="sc-quote">' + esc(SCAN.text) + '</p>',
+        '<p class="sc-at">' + hms(SCAN.at) + '</p>',
+        '<p class="sc-ch">' + esc(chapName(b, i)) + '</p>']);
+      key = scanKey('Jump here', 'sc-jump', 'Jump to ' + hms(SCAN.at));
+
+    } else if (ph === 'nomatch') {
+      inner = scanSays(['<p class="sc-line">No match in this book.</p>',
+        '<p class="sc-sub">Catch a few more lines, or try the facing page.</p>']);
+      key = scanKey('Try again', 'sc-again', 'Try again');
+
+    } else {
+      live = true;
+      /* the hint stands in the middle of the frame, and leaves once a scan has
+         been taken — by then it has said everything it can say */
+      inner = st.shot ? '' : scanSays(['<p class="sc-sub">Fill the frame with the page</p>']);
+      key = scanShutter(false, 'Read the page in front of the camera');
+    }
+
+    return '<div class="screen screen--scan">' +
+      '<div class="sc-head">' +
+        (closes
+          ? '<button type="button" class="btn btn--key sc-close" data-act="sc-close" ' +
+            'aria-label="Back to the viewfinder">' + IC.close + '</button>'
+          : '') +
+      '</div>' +
+      scanStage(live, scanLine(b, st, 'in') + inner) +
+      scanLine(b, st, 'under') +
+      key +
+      scanLine(b, st, 'bar') +
+      '</div>' + modelSheet(st);
   }
 
   /* ═══ PAGE CHROME: nav + scheme bar ═════════════════════════════════════ */
@@ -849,22 +1280,115 @@
     applyGuides(read(KEY_GUIDES) === '1', false);
   }
 
+  /* ═══ THE VARIANT RAIL ══════════════════════════════════════════════════
+     One rail per bottom-tab screen. Each axis is one thing that screen has
+     genuinely left open; each option says what it does AND what it costs.
+
+     A choice is written onto every phone's own dataset, so the CSS in
+     kit.css selects on `[data-a="…"]` and the render below never branches on
+     a variant. The active combination is joined by "." into location.hash,
+     and parsed back BY NAME on load, so a link restores the exact mix and an
+     unknown or misspelt token falls back to the suggested value instead of
+     leaving an axis unset.                                                */
+  function rail(cfg) {
+    var mount = document.getElementById(cfg.mount);
+    if (!mount) return null;
+    var axes = cfg.axes, REC = cfg.rec, WHY = cfg.why || {};
+    var V = {};
+    axes.forEach(function (ax) { V[ax.id] = REC[ax.id]; });
+
+    var byName = {};
+    axes.forEach(function (ax) {
+      ax.options.forEach(function (o) { byName[o.v] = ax.id; });
+    });
+    location.hash.slice(1).split('.').filter(Boolean).forEach(function (tok) {
+      var id = byName[tok];
+      if (id) V[id] = tok;          /* anything else is ignored → REC stands */
+    });
+
+    var phones = document.querySelectorAll('.phone');
+
+    function isRec() {
+      return axes.every(function (ax) { return V[ax.id] === REC[ax.id]; });
+    }
+
+    function apply() {
+      Array.prototype.forEach.call(phones, function (ph) {
+        axes.forEach(function (ax) { ph.dataset[ax.id] = V[ax.id]; });
+      });
+      var combo = axes.map(function (ax) { return V[ax.id]; }).join('.');
+      try { history.replaceState(null, '', '#' + combo); } catch (e) {}
+      /* an axis that is a state rather than a style cannot be set in CSS; the
+         page hands it to the phones itself */
+      if (cfg.onPick) cfg.onPick(V);
+      return combo;
+    }
+
+    function draw() {
+      var combo = apply();
+      mount.innerHTML =
+        '<div class="rail__title">' + esc(cfg.title) + '</div>' +
+        '<p class="rail__sub">' + esc(cfg.sub) + '</p>' +
+        '<div class="rec">' +
+          '<div class="rec__head">Suggested mix</div>' +
+          '<div class="rec__list">' + axes.map(function (ax) {
+            var o = ax.options.filter(function (x) { return x.v === REC[ax.id]; })[0];
+            return '<div class="rec__row"><span>' + esc(ax.id) + '</span><span><b>' +
+              esc(o.t) + '</b> — ' + esc(WHY[ax.id] || '') + '</span></div>';
+          }).join('') + '</div>' +
+        '</div>' +
+        axes.map(function (ax) {
+          return '<div class="rail__group">' +
+            '<div class="rail__label">' + esc(ax.id) + ' · ' + esc(ax.label) + '</div>' +
+            '<div class="seg">' + ax.options.map(function (o) {
+              return '<button type="button" data-axis="' + ax.id + '" data-value="' + o.v +
+                '" aria-pressed="' + (V[ax.id] === o.v ? 'true' : 'false') + '">' +
+                esc(o.t) + '<small>' + esc(o.d) + '</small></button>';
+            }).join('') + '</div></div>';
+        }).join('') +
+        '<div class="rail__acts">' +
+          '<button type="button" class="quiet-act" id="' + cfg.mount + '-apply"' +
+            (isRec() ? ' aria-pressed="true" disabled' : '') + '>' +
+            (isRec() ? 'Suggested mix is active' : 'Apply suggested mix') + '</button>' +
+          '<span class="rail__combo">' + esc(combo) + '</span>' +
+        '</div>' +
+        '<p class="rail__note">' + esc(cfg.note || '') + '</p>';
+
+      Array.prototype.forEach.call(mount.querySelectorAll('[data-axis]'), function (b) {
+        b.addEventListener('click', function () {
+          V[b.getAttribute('data-axis')] = b.getAttribute('data-value');
+          draw();
+        });
+      });
+      var ap = document.getElementById(cfg.mount + '-apply');
+      if (ap) ap.addEventListener('click', function () {
+        axes.forEach(function (ax) { V[ax.id] = REC[ax.id]; });
+        draw();
+      });
+    }
+
+    draw();
+    return { get: function () { return JSON.parse(JSON.stringify(V)); }, draw: draw };
+  }
+
   function mountOne(hostId, def) {
     return new Phone(document.getElementById(hostId), def);
   }
 
   var AB = {
     IC: IC, BOOKS: BOOKS, SPEEDS: SPEEDS, SLEEPS: SLEEPS, FILTERS: FILTERS,
-    Phone: Phone, chrome: chrome, mountOne: mountOne,
+    Phone: Phone, chrome: chrome, mountOne: mountOne, rail: rail,
     esc: esc, hms: hms, span: span, coverHTML: coverHTML, pct: pct, frac: frac, state: state,
     hasAudio: hasAudio, isPaired: isPaired, formatWord: formatWord, metaLine: metaLine,
-    chapLen: chapLen, chapIndex: chapIndex, chapName: chapName, wheelBox: wheelBox,
+    chapLen: chapLen, chapIndex: chapIndex, chapName: chapName,
+    wheelBox: wheelBox, chapterWheel: chapterWheel,
     searchField: searchField, bookRow: bookRow, resumeRow: resumeRow,
     scrubber: scrubber, transport: transport, identity: identity, utilRow: utilRow,
-    sleepPicker: sleepPicker, noteSheet: noteSheet, importSheet: importSheet, notes: notes,
-    IMPORTS: IMPORTS,
+    sleepPicker: sleepPicker, noteSheet: noteSheet, importSheet: importSheet,
+    modelSheet: modelSheet, notes: notes,
+    IMPORTS: IMPORTS, SCAN: SCAN, scanStage: scanStage,
     underConstruction: underConstruction,
-    libraryScreen: libraryScreen, playerScreen: playerScreen
+    libraryScreen: libraryScreen, playerScreen: playerScreen, scanScreen: scanScreen
   };
   global.AB = AB;
 })(window);
