@@ -64,6 +64,8 @@ final class TranscriptionJob: ObservableObject {
     /// The book a submitted continued-processing task belongs to. One
     /// identifier serves every book, so the handler needs this to know which.
     private var pendingBookID: UUID?
+    private var pendingDownload = false
+    private var modelTask: BGTask?
 
     init(
         transcriber: any Transcribing,
@@ -82,30 +84,70 @@ final class TranscriptionJob: ObservableObject {
 
     // MARK: the speech model
 
+    /// The download rides the same continued-processing task as a book, so it
+    /// keeps going when the phone is locked. When the scheduler refuses, it
+    /// runs in the app and pauses whenever the app leaves the foreground.
     func downloadModel() {
-        guard modelWork == nil, model != .ready else { return }
+        guard modelWork == nil, model != .ready, state.runningBookID == nil else { return }
         model = .downloading(fraction: 0)
         notice = nil
-        modelWork = Task { [transcriber] in
+
+        let request = BGContinuedProcessingTaskRequest(
+            identifier: Self.continuedIdentifier,
+            title: "Downloading speech model",
+            subtitle: "1.2 GB, once per phone")
+        request.strategy = .queue
+
+        guard Self.continuedRegistered else {
+            notice = "Downloading in the app only — keep Listnr open."
+            runModelDownload(task: nil)
+            return
+        }
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            pendingDownload = true
+        } catch {
+            notice = "Downloading in the app only — keep Listnr open."
+            runModelDownload(task: nil)
+        }
+    }
+
+    private func runModelDownload(task: BGTask?) {
+        (task as? BGContinuedProcessingTask)?.progress.totalUnitCount = 100
+        modelTask = task
+        let running = Task { [transcriber] in
             do {
                 try await transcriber.downloadModels { fraction in
                     Task { @MainActor [weak self] in
                         guard let self, case .downloading = self.model else { return }
                         self.model = .downloading(fraction: fraction)
+                        (self.modelTask as? BGContinuedProcessingTask)?
+                            .progress.completedUnitCount = Int64(fraction * 100)
                     }
                 }
                 self.model = .ready
+                self.modelTask?.setTaskCompleted(success: true)
             } catch {
                 self.model = .missing
-                self.notice = "The speech model could not be downloaded: \(error.localizedDescription)"
+                if !Task.isCancelled {
+                    self.notice = "The speech model could not be downloaded: \(error.localizedDescription)"
+                }
+                self.modelTask?.setTaskCompleted(success: false)
             }
+            self.modelTask = nil
             self.modelWork = nil
         }
+        modelWork = running
+        // Expiry keeps the files FluidAudio already fetched; the next tap
+        // continues from them.
+        task?.expirationHandler = { running.cancel() }
     }
 
     func stopModelDownload() {
         modelWork?.cancel()
         modelWork = nil
+        modelTask?.setTaskCompleted(success: false)
+        modelTask = nil
         model = transcriber.modelsReady ? .ready : .missing
     }
 
@@ -152,9 +194,14 @@ final class TranscriptionJob: ObservableObject {
         }
     }
 
-    /// The continued-processing handler: one identifier, so the book comes from
-    /// `pendingBookID`.
+    /// The continued-processing handler: one identifier, so what it is for
+    /// comes from `pendingDownload` / `pendingBookID`.
     func runPending(task: BGTask) {
+        if pendingDownload {
+            pendingDownload = false
+            runModelDownload(task: task)
+            return
+        }
         guard let bookID = pendingBookID else {
             task.setTaskCompleted(success: false)
             return
