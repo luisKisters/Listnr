@@ -13,6 +13,7 @@ settings:
     SWIFT_VERSION: "6.0"
     TARGETED_DEVICE_FAMILY: "1"
     CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 4C8444267Z
     GENERATE_INFOPLIST_FILE: NO
     # Xcode 26 "Update to recommended settings" — set here so xcodegen emits them
     # and the modal never blocks the IDE (it also blocks the xcode MCP bridge).
