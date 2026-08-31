@@ -36,6 +36,31 @@ App (SwiftUI)
 4. AlignmentKit maps offset → audio time: match EPUB chapter to M4B chapter, then linear interpolation by character position within the chapter. Good enough for v1; forced alignment later makes it word-exact.
 5. Confirm card → set progress in player + store EPUB position.
 
+## Background transcription
+
+Scan-to-position needs a word-level transcript of the audiobook, and a 28-hour book cannot be
+transcribed while the user stares at the screen. Four mechanisms, in order of what carries the work:
+
+| Mechanism | Runs when locked? | Role |
+|---|---|---|
+| `BGContinuedProcessingTask` (iOS 26) | Yes — the user starts it in the foreground, the system keeps it alive and shows its own progress pill with a cancel. | **Primary.** Expires under thermal, battery or user action. |
+| `BGProcessingTask` | Yes, when the system decides (idle, usually charging). | **Overnight fallback** for a job that expired. |
+| `audio` background mode (already on) | Yes, while a book plays. | Free bonus, no code. |
+| Silent-audio hack | — | Rejected: App Store policy, and dishonest. |
+
+Two rules make it survivable:
+
+- **Checkpoint per chunk.** Audio is transcribed in 5-minute windows; every finished window is
+  written to `Application Support/Transcripts/<bookID>.partial.json`. The job can be killed at any
+  instant, so the partial file *is* the feature — a restart continues from `nextOffset`. Only the
+  last window promotes it to `<bookID>.json`. "Stop" keeps the checkpoint; it is a pause.
+- **No GPU.** Core ML runs `.cpuAndNeuralEngine`. A continued-processing task may not touch the GPU
+  without an entitlement Listnr does not have, and the ANE is available while the phone is locked.
+
+Recognition is FluidAudio's Parakeet TDT v3 (Core ML, on-device, ~1.2 GB downloaded once per phone).
+`Transcriber` is an actor with no UI and no SwiftData, like `LibraryIndexer`; `TranscriptionJob`
+(`@MainActor`) owns the one running job and every scheduler path. Nothing leaves the device.
+
 ## Scaling path (why this stack doesn't dead-end)
 - SwiftData → flip on CloudKit sync for multi-device.
 - App Intents already built → Action button, widgets, Watch, Siri come almost free.

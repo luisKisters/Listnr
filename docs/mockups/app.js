@@ -1217,7 +1217,8 @@
   /* ═══ PAGE CHROME: nav + scheme bar ═════════════════════════════════════ */
   var PAGES = [
     ['index.html', 'Direction'], ['library.html', 'Library'],
-    ['audiobook.html', 'Audiobook'], ['reader.html', 'Reader'], ['scan.html', 'Scan']
+    ['audiobook.html', 'Audiobook'], ['reader.html', 'Reader'], ['scan.html', 'Scan'],
+    ['transcribe.html', 'Transcription']
   ];
   function chrome(current, note) {
     var head = document.querySelector('.pg-head');
