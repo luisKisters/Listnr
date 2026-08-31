@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="favicon.svg">
+<title>Listnr — icon concepts</title>
+<style>
+  :root {
+    --bg: #000;
+    --fg: #2bff3e;
+    --page: #0a0a0a;
+    --text: #f2f2f2;
+    --muted: #7a7a7a;
+    --line: #1e1e1e;
+    --sp: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--page); color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  body { padding: var(--sp) var(--sp) 96px; max-width: 720px; margin: 0 auto; }
+
+  header { padding: 8px 0 20px; }
+  h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+  .row { display: flex; align-items: center; gap: var(--sp);
+         padding: 20px 0; border-top: 1px solid var(--line); }
+  .num { width: 20px; flex: none; color: var(--muted); font-size: 13px;
+         font-variant-numeric: tabular-nums; align-self: flex-start; padding-top: 4px; }
+  .sizes { display: flex; align-items: center; gap: 14px; flex: none; }
+  .meta { min-width: 0; }
+  .meta b { display: block; font-weight: 600; font-size: 15px; }
+  .meta span { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  svg { display: block; border-radius: 22.37%; }
+  .s180 { width: 84px; height: 84px; }
+  .s60  { width: 60px; height: 60px; }
+  .s40  { width: 40px; height: 40px; }
+  @media (min-width: 560px) { .s180 { width: 120px; height: 120px; } }
+
+  .big { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+         gap: var(--sp); padding: 20px 0 0; }
+  .big svg { width: 100%; height: auto; }
+  .big figure { margin: 0; }
+  .big figcaption { color: var(--muted); font-size: 12px; margin-top: 6px;
+                    font-variant-numeric: tabular-nums; }
+
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 0;
+         background: rgba(10,10,10,0.94); backdrop-filter: blur(12px);
+         border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  .bar button { flex: 1; background: none; border: 0; color: var(--muted);
+         font: inherit; font-size: 13px; padding: 14px 0; cursor: pointer; }
+  .bar button[aria-pressed="true"] { color: var(--text); }
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+            margin-right: 6px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Listnr — icon concepts</h1>
+  <p>10 marks, shown at 120 / 60 / 40 px. Toggle scheme below.</p>
+</header>
+
+<div id="rows"></div>
+
+<div class="big" id="big"></div>
+
+<nav class="bar" id="bar"></nav>
+
+<script>
+const SCHEMES = [
+  { name: "lime",       bg: "#000000", fg: "#2bff3e" },
+  { name: "purple",     bg: "#000000", fg: "#8B5CF6" },
+  { name: "lime inv",   bg: "#2bff3e", fg: "#000000" },
+  { name: "purple inv", bg: "#8B5CF6", fg: "#0a0a0a" },
+];
+
+// Each icon: 512x512 viewBox, single accent shape on the ground colour.
+const ICONS = [
+  {
+    title: "Waveform spine",
+    note: "Level meter that also reads as books on a shelf.",
+    body: `
+      <rect x="104" y="196" width="46" height="120" rx="23"/>
+      <rect x="176" y="140" width="46" height="232" rx="23"/>
+      <rect x="248" y="96"  width="46" height="320" rx="23"/>
+      <rect x="320" y="164" width="46" height="184" rx="23"/>
+      <rect x="392" y="216" width="46" height="80"  rx="23"/>`
+  },
+  {
+    title: "Bookmark + play",
+    note: "Ribbon whose notch is inverted into a play triangle.",
+    body: `
+      <path d="M150 88h212a24 24 0 0 1 24 24v312L256 344 130 424V112a24 24 0 0 1 20-24z"
+            fill-rule="evenodd"/>
+      <path d="M222 176l96 56-96 56z" fill="var(--icon-bg)"/>`
+  },
+  {
+    title: "Folded corner",
+    note: "Page corner folded back, play cut from the fold.",
+    body: `
+      <path d="M128 96h176l112 112v208a24 24 0 0 1-24 24H128a24 24 0 0 1-24-24V120a24 24 0 0 1 24-24z"/>
+      <path d="M304 96l112 112H304z" fill="var(--icon-bg)"/>
+      <path d="M212 248l104 60-104 60z" fill="var(--icon-bg)"/>`
+  },
+  {
+    title: "Scan bracket",
+    note: "Camera focus corners around play. Sells the paper-sync feature.",
+    body: `
+      <path d="M104 176v-48a24 24 0 0 1 24-24h48v44h-28v28zM408 176v-48a24 24 0 0 0-24-24h-48v44h28v28z"/>
+      <path d="M104 336v48a24 24 0 0 0 24 24h48v-44h-28v-28zM408 336v48a24 24 0 0 1-24 24h-48v-44h28v-28z"/>
+      <path d="M212 184l128 72-128 72z"/>`
+  },
+  {
+    title: "Progress arc",
+    note: "Open arc with a head dot — echoes the library progress rails.",
+    body: `
+      <path d="M256 112a144 144 0 1 0 144 144" fill="none" stroke="var(--icon-fg)"
+            stroke-width="56" stroke-linecap="round"/>
+      <circle cx="256" cy="112" r="34"/>`
+  },
+  {
+    title: "Pages to play",
+    note: "Play triangle built from four text lines.",
+    body: `
+      <rect x="152" y="140" width="208" height="44" rx="22"/>
+      <rect x="152" y="212" width="152" height="44" rx="22"/>
+      <rect x="152" y="284" width="96"  height="44" rx="22"/>
+      <rect x="152" y="356" width="44"  height="44" rx="22"/>`
+  },
+  {
+    title: "Headphones",
+    note: "Thick headband, two solid cups. Most literal, most legible.",
+    body: `
+      <path d="M128 312v-40a128 128 0 0 1 256 0v40" fill="none" stroke="var(--icon-fg)"
+            stroke-width="52" stroke-linecap="round"/>
+      <rect x="98"  y="288" width="80" height="128" rx="40"/>
+      <rect x="334" y="288" width="80" height="128" rx="40"/>`
+  },
+  {
+    title: "Open book — CHOSEN",
+    note: "Two solid pages, the far one dimmed. Shipped as the app icon, scheme 2 (the app accent violet).",
+    body: `
+      <path d="M256 152c-40-34-96-44-140-40a16 16 0 0 0-14 16v212a16 16 0 0 0 18 16c40-4 92 4 136 36z"/>
+      <path d="M256 152c40-34 96-44 140-40a16 16 0 0 1 14 16v212a16 16 0 0 1-18 16c-40-4-92 4-136 36z"
+            opacity="0.55"/>`
+  },
+  {
+    title: "Ring player",
+    note: "Thick broken ring with solid play inside.",
+    body: `
+      <path d="M256 96a160 160 0 1 1-113 47" fill="none" stroke="var(--icon-fg)"
+            stroke-width="48" stroke-linecap="round"/>
+      <path d="M222 190l124 66-124 66z"/>`
+  },
+  {
+    title: "Listnr L",
+    note: "Lowercase l with the dot as a play head. Wordmark tie-in.",
+    body: `
+      <rect x="176" y="88" width="56" height="336" rx="28"/>
+      <path d="M272 200l112 56-112 56z"/>`
+  },
+];
+
+function svg(icon, size) {
+  return `<svg class="s${size}" viewBox="0 0 512 512" role="img" aria-label="${icon.title}"
+            style="background:var(--icon-bg)">
+    <g fill="var(--icon-fg)">${icon.body}</g>
+  </svg>`;
+}
+
+const rows = document.getElementById("rows");
+const big = document.getElementById("big");
+rows.innerHTML = ICONS.map((ic, i) => `
+  <div class="row">
+    <div class="num">${i + 1}</div>
+    <div class="sizes">${svg(ic, 180)}${svg(ic, 60)}${svg(ic, 40)}</div>
+    <div class="meta"><b>${ic.title}</b><span>${ic.note}</span></div>
+  </div>`).join("");
+big.innerHTML = ICONS.map((ic, i) => `
+  <figure>${svg(ic, 180).replace('class="s180"', "")}
+  <figcaption>${i + 1}</figcaption></figure>`).join("");
+
+const bar = document.getElementById("bar");
+bar.innerHTML = SCHEMES.map((s, i) => `
+  <button data-i="${i}" aria-pressed="${i === 1}">
+    <span class="swatch" style="background:${s.fg};outline:1px solid ${s.bg}"></span>${i + 1}
+  </button>`).join("");
+
+function apply(i) {
+  const s = SCHEMES[i];
+  document.documentElement.style.setProperty("--icon-bg", s.bg);
+  document.documentElement.style.setProperty("--icon-fg", s.fg);
+  bar.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+}
+bar.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) apply(+b.dataset.i);
+});
+apply(1);
+</script>
+</body>
+</html>
