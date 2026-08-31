@@ -85,17 +85,20 @@ The simulator has no camera, so the UI suite injects a fixed page image
 
 ### The speech-model download
 
-460 MB, once per install. It only runs in the foreground and it cannot resume,
-so the only way to prove it is to walk it on a phone that does not have it yet.
-Delete the app first — that takes the model with it.
+460 MB, once per install. It rides a continued-processing task, so it keeps
+going when the phone locks. The only way to prove it is to walk it on a phone
+that does not have it yet. Delete the app first — that takes the model with it.
 
 - [ ] Scan tab, a book with no transcript, model not on disk: the button reads
       "Download the model", not "Prepare this book". Tap it — the sheet says it downloads
-      once and stops when the phone locks.  Date: ______
-- [ ] Tap Download: the percentage climbs on the bar in the sheet and on the Scan button
-      under it. A tap outside the sheet does nothing.  Date: ______
-- [ ] Lock the phone for a minute, unlock: the download stopped and the sheet offers
-      Download again from zero. This is the honest behaviour, not a bug.  Date: ______
+      once and stays, even when the phone locks.  Date: ______
+- [ ] Tap Download: the button itself fills — the done part darker, the label reads
+      "Downloading · N%". A tap outside the sheet does nothing.  Date: ______
+- [ ] Lock the phone: within seconds the lock screen shows the system pill
+      "Downloading speech model" with a progress bar and a cancel. Leave it locked a
+      minute, unlock: the percentage advanced. If no pill ever appears, the phone
+      refused the task — the app then says "keep Listnr open" and this is the finding
+      to report.  Date: ______
 - [ ] Tap Stop mid-download, then Download again: it restarts at 0 per cent.  Date: ______
 - [ ] Let it finish: the sheet closes itself and the book that was tapped starts
       preparing without a second tap.  Date: ______
@@ -106,6 +109,12 @@ Delete the app first — that takes the model with it.
 
 - [ ] Scan tab with a book that has no transcript and the model already on disk: it says
       so and offers "Prepare this book", with no sheet.  Date: ______
+- [ ] Tap "Prepare this book", lock the phone: the pill reads "Preparing <title>" and
+      its bar advances while locked.  Date: ______
+- [ ] Cancel from the pill, reopen Listnr: preparation resumes by itself from the saved
+      percentage, never from zero.  Date: ______
+- [ ] Stop a preparation halfway, plug the phone in overnight: next morning the
+      percentage is higher or the book is prepared (the overnight fallback).  Date: ______
 - [ ] Preparation runs in the background: leave the tab, play the book, come back. The
       percentage kept climbing and playback never stuttered.  Date: ______
 - [ ] With the transcript ready: point the camera at a page of the paper book, tap the

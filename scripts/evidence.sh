@@ -28,7 +28,9 @@ shot() {
 shot 01-library.png library
 shot 02-player.png audiobook
 shot 03-reader-construction.png reader
-shot 04-scan-construction.png scan
+shot 04-scan-prepare.png scan
+shot 07-scan-preparing.png scan -preparing
+shot 08-scan-downloading.png scan -modeldownloading
 # the sheets: -sheet opens them on launch (AppModel.init)
 shot 05-import-sheet.png library -sheet import
 shot 06-note-sheet.png audiobook -sheet note

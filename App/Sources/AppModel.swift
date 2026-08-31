@@ -76,6 +76,13 @@ final class AppModel: ObservableObject {
         if ScanFixture.isActive, let id = currentBookID {
             ScanFixture.install(bookID: id)
         }
+        // Screenshot states for scripts/evidence.sh — never set by the app.
+        if ProcessInfo.processInfo.arguments.contains("-modeldownloading") {
+            modelDownload = .downloading(0.42)
+        }
+        if ProcessInfo.processInfo.arguments.contains("-preparing") {
+            preparationProgress = 0.42
+        }
         #endif
 
         // deep-launch support: `-tab audiobook|reader|scan|library`
@@ -439,6 +446,10 @@ final class AppModel: ObservableObject {
     /// the answer can have changed. A download in flight is not second-guessed,
     /// and a failure keeps its message until something is tried again.
     private func refreshModelState() {
+        #if DEBUG
+        // The evidence screenshots pin a fake state; the disk must not win.
+        if ProcessInfo.processInfo.arguments.contains("-modeldownloading") { return }
+        #endif
         guard modelDownloadTask == nil, modelDownload != .failed else { return }
         modelDownload = modelCache.isDownloaded() ? .ready : .missing
     }
