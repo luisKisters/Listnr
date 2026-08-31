@@ -69,10 +69,49 @@ final class ListnrUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["The reader is not built yet — it arrives with the paired EPUB."]
             .waitForExistence(timeout: 5))
         tabBar.buttons["Scan"].tap()
-        XCTAssertTrue(app.staticTexts["Scan-to-sync is not built yet — it arrives after notes."]
-            .waitForExistence(timeout: 5))
+        // Provisional: the Scan tab holds the Transcription screen until the
+        // real scan-to-position UI lands.
+        XCTAssertTrue(app.staticTexts["Transcription"].waitForExistence(timeout: 5))
         tabBar.buttons["Library"].tap()
         XCTAssertTrue(app.staticTexts["Library"].waitForExistence(timeout: 5))
+    }
+
+    // MARK: transcription
+
+    /// The whole Transcription screen in one pass: the model job runs to
+    /// "Model ready", which unlocks the book job, which runs to "Transcribed".
+    /// `-faketranscriber` swaps the 1.2 GB Parakeet models for the
+    /// deterministic stand-in, exactly as `-mockengine` does for playback.
+    func testTranscriptionScreenRunsBothJobs() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-uitest", "-mockengine", "-faketranscriber", "-tab", "scan", "-model", "missing",
+        ]
+        app.launch()
+
+        let download = app.buttons["Download the speech model"]
+        XCTAssertTrue(download.waitForExistence(timeout: 10), "model button missing")
+
+        let transcribe = app.buttons["Transcribe Project Hail Mary"]
+        XCTAssertTrue(transcribe.exists, "book button missing")
+        XCTAssertFalse(transcribe.isEnabled, "the book must wait for the model")
+
+        download.tap()
+        let ready = app.buttons["The speech model is ready"]
+        XCTAssertTrue(ready.waitForExistence(timeout: 15), "model never became ready")
+        XCTAssertTrue(transcribe.isEnabled, "a ready model must unlock the book")
+
+        transcribe.tap()
+        let stop = app.buttons["Stop transcribing Project Hail Mary"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 10), "no running state")
+        XCTAssertTrue(stop.label.isEmpty == false)
+        XCTAssertTrue(
+            app.staticTexts.containing(
+                NSPredicate(format: "label BEGINSWITH %@", "Transcribing")).firstMatch.exists
+                || stop.exists)
+
+        let done = app.buttons["Project Hail Mary is transcribed"]
+        XCTAssertTrue(done.waitForExistence(timeout: 90), "the run never finished")
     }
 
     // MARK: library
