@@ -31,8 +31,9 @@ struct ScanView: View {
         .background(Theme.bg)
         .onAppear { if state == .idle { camera.start() } }
         .onDisappear { camera.stop() }
+        // The open drum leaves the session running, so the viewfinder is back at once.
         .onChange(of: state) { _, new in
-            if new == .idle { camera.start() } else if new != .reading { camera.stop() }
+            if new == .idle { camera.start() } else if new != .reading && new != .selecting { camera.stop() }
         }
         .onChange(of: model.preparationProgress) { _, new in
             if new == nil { preparingBookID = nil }
@@ -250,6 +251,7 @@ struct ScanView: View {
             get: { scanBookID ?? book?.id },
             set: { newValue in
                 scanBookID = newValue
+                selectorOpen = false
                 UISelectionFeedbackGenerator().selectionChanged()
             })) {
             ForEach(books) { candidate in

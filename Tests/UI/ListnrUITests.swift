@@ -256,6 +256,37 @@ final class ListnrUITests: XCTestCase {
                        "the engine must land within two seconds of the injected truth")
     }
 
+    func testPickingAnotherBookClosesTheSelector() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-mockengine", "-scanfixture", "-tab", "scan"]
+        app.launch()
+
+        let shutter = app.buttons["Read the page in front of the camera"]
+        XCTAssertTrue(shutter.waitForExistence(timeout: 15), "the shutter must be armed")
+        let selector = button(app, startingWith: "Book to match against: ")
+        XCTAssertTrue(selector.waitForExistence(timeout: 6), "selector missing")
+        let prefix = "Book to match against: "
+        let current = String(selector.label.dropFirst(prefix.count))
+        selector.tap()
+
+        let wheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 6), "wheel missing")
+
+        // adjust(toPickerWheelValue:) steps one row at a time and the drum closes on
+        // the first step, so the target has to be the row right under the current one.
+        let target = "Der Schwarm"
+        XCTAssertNotEqual(current, target, "the fixture book must not be the target")
+        // XCUITest reads a row as "<title>, <status>"; every book but the fixture one is not prepared.
+        wheel.adjust(toPickerWheelValue: "\(target), not prepared")
+
+        // Only the fixture book has a transcript, so the new book lands on its
+        // not-prepared frame; the proof is the drum going away by itself.
+        XCTAssertTrue(waitAbsent(wheel), "the wheel must close on picking another book")
+        XCTAssertTrue(
+            button(app, startingWith: "Book to match against: \(target)").waitForExistence(timeout: 6),
+            "the selector must now read \(target)")
+    }
+
     private func seconds(_ clock: String) -> Double {
         let parts = clock.split(separator: ":").compactMap { Double($0) }
         guard parts.count == 3 else { return -1 }

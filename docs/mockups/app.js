@@ -401,16 +401,17 @@
     this.st.sel = false;
     this.paint();
   };
-  /* the frame's box becomes the drum. Settling on a row picks that book and
-     the drum stays up, the way an iOS wheel does; the close dismisses it.
-     Picking the book that is already there changes nothing, so it must not
-     throw away a transcription that is running for it. */
+  /* the frame's box becomes the drum. Settling on a different row picks that
+     book and closes the drum so the viewfinder is back at once; picking the
+     book that is already there changes nothing and leaves the drum up, so it
+     must not throw away a transcription that is running for it. */
   Phone.prototype.scanPick = function (id) {
     if (!id || id === this.st.book) return this.paint();
     if (this.st.playing) this.pause();
     this.scanClear();
     this.st.book = id;
     this.st.scan = 'idle';
+    this.st.sel = false;
     this.st.chaps = false; this.st.sleepOpen = false;
     this.paint();
   };
